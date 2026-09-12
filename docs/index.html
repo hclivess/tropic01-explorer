@@ -266,12 +266,7 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
     unmodified with the send path instrumented. You get the source, what it
     printed, and the bytes underneath — not a description of what they do.
   </p>
-  <p class="note">
-    Bytes shown as <span class="vol">·</span> are session-dependent: ephemeral
-    X25519 keys and the ciphertext they produce. Each script is run twice and
-    the two recordings compared, so the mask is exactly the bytes that actually
-    moved — derived, not guessed.
-  </p>
+  <p class="note" id="ex-note"></p>
   <div id="examples"></div>
 </section>
 
@@ -819,6 +814,18 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
     return wrap;
   }
 
+  // Say what the capture actually is, rather than describing a masking scheme
+  // that may no longer apply to anything.
+  const volatileCount = (S.examples || []).filter((x) => x.any_volatile).length;
+  $("ex-note").textContent = volatileCount === 0
+    ? "The entropy these scripts draw on — ephemeral X25519 keys, os.urandom, "
+      + "and Python's random module — is pinned for the duration of the capture, "
+      + "so every byte below is real and reproduces exactly. Nothing is masked "
+      + "and nothing is omitted."
+    : volatileCount + " of " + S.examples.length + " scripts still produce "
+      + "session-dependent bytes; those are shown as " + "\u00b7"
+      + " and are exactly the positions that moved across repeated runs.";
+
   const exBox = $("examples");
   (S.examples || []).forEach((x) => {
     const panel = el("div", { className: "panel" });
@@ -863,14 +870,20 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
       panel.append(box);
     });
 
-    if (x.stdout) {
+    // null means the capture disagreed between runs; "" means the script simply
+    // printed nothing. Treating both as falsy labelled a silent example as
+    // non-reproducible, which was wrong and read like an excuse.
+    if (x.stdout === null) {
+      panel.append(el("div", { className: "sub vol",
+        textContent: "stdout differed between runs and was not committed" }));
+    } else if (x.stdout === "") {
+      panel.append(el("div", { className: "sub",
+        textContent: "prints nothing — this one logs instead of printing" }));
+    } else {
       const out = el("details");
       out.append(el("summary", { textContent: "what it printed" }));
       out.append(el("div", { className: "out", textContent: x.stdout }));
       panel.append(out);
-    } else {
-      panel.append(el("div", { className: "sub",
-        textContent: "output varies between runs; not committed" }));
     }
     exBox.append(panel);
   });

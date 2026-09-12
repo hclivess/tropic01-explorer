@@ -1075,17 +1075,17 @@ window.MODEL_SPEC = {
    "title": "This test sends a GetInfo request to the Tropic01Model and prints the response."
   },
   {
-   "any_volatile": true,
+   "any_volatile": false,
    "calls": [
     {
-     "got": "0130....................................................................................................",
+     "got": "0130556a401712da87d737e0101688534bfd7b4433bc4a8722bacc974c0191ffce6fc98039521b7517c19599287c3e38e273f388",
      "kind": "L2",
      "length_varies": false,
      "name": "TsL2HandshakeRequest",
-     "repr_got": null,
-     "repr_sent": null,
-     "sent": "0221................................................................00....",
-     "volatile": true
+     "repr_got": "TsL2HandshakeResponse<(status=01, length=30, e_tpub=[55, 6a, 40, 17, 12, da, 87, d7, 37, e0, 10, 16, 88, 53, 4b, fd, 7b, 44, 33, bc, 4a, 87, 22, ba, cc, 97, 4c, 01, 91, ff, ce, 6f], t_tauth=[c9, 80, 39, 52, 1b, 75, 17, c1, 95, 99, 28, 7c, 3e, 38, e2, 73], crc=88f3)",
+     "repr_sent": "TsL2HandshakeRequest<(id=AUTO, length=AUTO, e_hpub=[0a, ed, c3, 0f, bd, 0e, db, 4e, a3, 91, 76, 05, c5, 41, a9, b8, 0d, 2a, ce, 7c, dd, 79, 9c, 24, 99, eb, 76, 18, 9c, 99, df, 13], pkey_index=00, crc=AUTO)",
+     "sent": "02210aedc30fbd0edb4ea3917605c541a9b80d2ace7cdd799c2499eb76189c99df1300ec51",
+     "volatile": false
     },
     {
      "got": "c36465616462656566",
@@ -1105,17 +1105,17 @@ window.MODEL_SPEC = {
    "title": "This test establish a secure channel between the Tropic01Model and the Host."
   },
   {
-   "any_volatile": true,
+   "any_volatile": false,
    "calls": [
     {
-     "got": "0130....................................................................................................",
+     "got": "0130556a401712da87d737e0101688534bfd7b4433bc4a8722bacc974c0191ffce6fc98039521b7517c19599287c3e38e273f388",
      "kind": "L2",
      "length_varies": false,
      "name": "TsL2HandshakeRequest",
-     "repr_got": null,
-     "repr_sent": null,
-     "sent": "0221................................................................00....",
-     "volatile": true
+     "repr_got": "TsL2HandshakeResponse<(status=01, length=30, e_tpub=[55, 6a, 40, 17, 12, da, 87, d7, 37, e0, 10, 16, 88, 53, 4b, fd, 7b, 44, 33, bc, 4a, 87, 22, ba, cc, 97, 4c, 01, 91, ff, ce, 6f], t_tauth=[c9, 80, 39, 52, 1b, 75, 17, c1, 95, 99, 28, 7c, 3e, 38, e2, 73], crc=88f3)",
+     "repr_sent": "TsL2HandshakeRequest<(id=02, length=21, e_hpub=[0a, ed, c3, 0f, bd, 0e, db, 4e, a3, 91, 76, 05, c5, 41, a9, b8, 0d, 2a, ce, 7c, dd, 79, 9c, 24, 99, eb, 76, 18, 9c, 99, df, 13], pkey_index=00, crc=51ec)",
+     "sent": "02210aedc30fbd0edb4ea3917605c541a9b80d2ace7cdd799c2499eb76189c99df1300ec51",
+     "volatile": false
     },
     {
      "got": "c36465616462656566",
@@ -1135,37 +1135,37 @@ window.MODEL_SPEC = {
    "title": "This test establish a secure channel between the Tropic01Model and the Host."
   },
   {
-   "any_volatile": true,
+   "any_volatile": false,
    "calls": [
     {
-     "got": "0130....................................................................................................",
+     "got": "0130556a401712da87d737e0101688534bfd7b4433bc4a8722bacc974c0191ffce6fc98039521b7517c19599287c3e38e273f388",
      "kind": "L2",
      "length_varies": false,
      "name": "TsL2HandshakeRequest",
-     "repr_got": null,
-     "repr_sent": null,
-     "sent": "0221................................................................00....",
-     "volatile": true
+     "repr_got": "TsL2HandshakeResponse<(status=01, length=30, e_tpub=[55, 6a, 40, 17, 12, da, 87, d7, 37, e0, 10, 16, 88, 53, 4b, fd, 7b, 44, 33, bc, 4a, 87, 22, ba, cc, 97, 4c, 01, 91, ff, ce, 6f], t_tauth=[c9, 80, 39, 52, 1b, 75, 17, c1, 95, 99, 28, 7c, 3e, 38, e2, 73], crc=88f3)",
+     "repr_sent": "TsL2HandshakeRequest<(id=AUTO, length=AUTO, e_hpub=[0a, ed, c3, 0f, bd, 0e, db, 4e, a3, 91, 76, 05, c5, 41, a9, b8, 0d, 2a, ce, 7c, dd, 79, 9c, 24, 99, eb, 76, 18, 9c, 99, df, 13], pkey_index=00, crc=AUTO)",
+     "sent": "02210aedc30fbd0edb4ea3917605c541a9b80d2ace7cdd799c2499eb76189c99df1300ec51",
+     "volatile": false
     },
     {
-     "got": null,
+     "got": "c3b4d356bcc9bbf421b51a2e64aed9",
      "kind": "L3",
-     "length_varies": true,
+     "length_varies": false,
      "name": "TsL3PingCommand",
      "repr_got": "",
-     "repr_sent": null,
-     "sent": null,
-     "volatile": true
+     "repr_sent": "TsL3PingCommand<(id=AUTO, data_in=[b4, d3, 56, bc, c9, bb, f4, 21, b5, 1a, 2e, 64, ae, d9])",
+     "sent": "01b4d356bcc9bbf421b51a2e64aed9",
+     "volatile": false
     },
     {
-     "got": "c3000000................................................................",
+     "got": "c30000003d6cb729dc8a57eaafb96f52252a7b5f844b4e5cd21cffb626e5ea5a9a0447fc",
      "kind": "L3",
      "length_varies": false,
      "name": "TsL3MacAndDestroyCommand",
      "repr_got": "",
-     "repr_sent": null,
-     "sent": "90..0000................................................................",
-     "volatile": true
+     "repr_sent": "TsL3MacAndDestroyCommand<(id=AUTO, slot=0024, padding=AUTO, data_in=[e0, 6e, 45, 88, 06, 03, 01, 04, 25, ae, 04, b5, ba, a5, a4, ba, 54, 50, 66, 80, 19, 94, d9, 04, 03, aa, 6b, 6b, 71, 90, 67, a5])",
+     "sent": "90240000e06e45880603010425ae04b5baa5a4ba545066801994d90403aa6b6b719067a5",
+     "volatile": false
     }
    ],
    "error": null,
@@ -2092,8 +2092,8 @@ window.MODEL_SPEC = {
   },
   "spec_version": 1,
   "ts_tvl_branch": "feat/startup-mode",
-  "ts_tvl_commit": "b311872",
-  "ts_tvl_describe": "2.3-69-gb311872"
+  "ts_tvl_commit": "ae0daec",
+  "ts_tvl_describe": "2.3-70-gae0daec"
  },
  "wire_traces": [
   {
