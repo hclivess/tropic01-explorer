@@ -243,6 +243,32 @@ dom.window.addEventListener("load", () => {
   check("clearing the filter restores it",
     n("#const-values tbody tr"), spec.constants.values.length);
 
+  // Byte order: L2 is little-endian throughout, so the page must not offer a
+  // choice. The one big-endian thing in the codebase is CO storage, which never
+  // reaches the wire.
+  const single = spec.constants.values.find(
+    (v) => v.kind === "int" && v.value <= 0xff);
+  const multi = spec.constants.values.find(
+    (v) => v.kind === "int" && v.value > 0xff);
+  const rows = [...d.querySelectorAll("#const-values tbody tr.pick")];
+  const rowFor = (name) => rows.find((r) => r.cells[0].textContent === name);
+  if (single && rowFor(single.name)) {
+    const r = rowFor(single.name);
+    r.click();
+    check("single-byte value shows no byte order",
+      /endian/.test(r.nextSibling.textContent), false);
+    r.click();
+  }
+  if (multi && rowFor(multi.name)) {
+    const r = rowFor(multi.name);
+    r.click();
+    const text = r.nextSibling.textContent;
+    check("multi-byte value shows little-endian", /little-endian/.test(text), true);
+    check("multi-byte value does not offer big-endian",
+      /big-endian/.test(text), false);
+    r.click();
+  }
+
   // decoded payloads in Try it
   const decodable = spec.exchanges.filter((e) => e.decoded).length;
   atLeast("decodable exchanges", decodable, 1);

@@ -343,6 +343,16 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
     than retyped — every enum with its members and their documentation, every
     size, every encoded version. Click a value to see it in other bases.
   </p>
+  <p class="note">
+    Byte order is shown as <b>little-endian</b> because that is the only order L2
+    uses: the CRC goes out as <code>2b 92</code> for a value of
+    <code>0x922B</code>, the firmware version word is
+    <code>to_bytes(4, "little")</code>, and the FW bank header is
+    <code>struct "&lt;HBB4sII32sI"</code>. The one exception in the codebase is
+    not on the wire at all — <code>configuration_object.py</code> stores
+    Configuration Object registers <b>big-endian</b>, so a CO word assembled by
+    hand is the place to get this wrong.
+  </p>
   <div class="panel">
     <input id="const-search" type="search" placeholder="filter by name or description…">
     <div class="sub" id="const-count"></div>
@@ -1206,19 +1216,22 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
   // itself. No new facts, just other bases.
   function representations(n, byteLength) {
     const width = byteLength ? byteLength * 8 : Math.max(8, (n.toString(2).length + 7) & ~7);
-    const le = [], be = [];
-    for (let i = 0; i < width / 8; i++) {
-      const byte = (n >> (8 * i)) & 0xff;
-      le.push(byte.toString(16).padStart(2, "0"));
-      be.unshift(byte.toString(16).padStart(2, "0"));
-    }
-    return {
+    const out = {
       decimal: String(n),
       hex: "0x" + n.toString(16).toUpperCase(),
       binary: "0b" + n.toString(2).padStart(width, "0"),
-      "bytes, little-endian": le.join(" "),
-      "bytes, big-endian": be.join(" "),
     };
+    // Everything L2 puts on the wire is little-endian - the CRC, the FW version
+    // word, the FW bank header struct. Showing both orders implied a choice
+    // that does not exist, and on a single byte it was just noise.
+    if (width > 8) {
+      const le = [];
+      for (let i = 0; i < width / 8; i++) {
+        le.push(((n >> (8 * i)) & 0xff).toString(16).padStart(2, "0"));
+      }
+      out["on the wire (little-endian)"] = le.join(" ");
+    }
+    return out;
   }
 
   function detail(pairs) {
@@ -1318,13 +1331,12 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
           () => {
             if (v.kind === "int") return detail(representations(v.value));
             if (v.kind === "bytes") {
-              return detail({
-                hex: v.hex,
-                "spaced": (v.hex.match(/../g) || []).join(" "),
+              const fields = {
+                "on the wire": (v.hex.match(/../g) || []).join(" "),
                 length: v.length + " bytes",
-                "as int, little-endian": v.int_le,
-                "as int, big-endian": v.int_be,
-              });
+              };
+              if (v.length > 1) fields["as an integer (little-endian)"] = v.int_le;
+              return detail(fields);
             }
             return detail({ value: v.kind === "str" ? v.text : v.signature,
                             documentation: v.doc || "—" });
