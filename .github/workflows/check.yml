@@ -26,6 +26,13 @@ jobs:
     # repository variables TS_TVL_REPO and TS_TVL_REF, and a secret TS_TVL_TOKEN
     # with read access if that repository is private. Without them the job
     # reports that it was skipped rather than passing quietly.
+    #
+    # This repository is public, so think before adding that secret: use a
+    # fine-grained token scoped read-only to the one repository, never a
+    # broadly-scoped PAT. The same gate already runs locally via the pre-push
+    # hook (.githooks/pre-push -> tools/check.sh), which needs no secret at all,
+    # so arming this job is optional belt-and-braces rather than the only
+    # thing standing between the page and drift.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

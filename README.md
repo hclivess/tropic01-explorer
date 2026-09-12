@@ -38,9 +38,23 @@ reimplementation of the state machine to disagree with the Python one.
 Likewise the wire traces are bytes a real model really emitted, captured by
 driving a real `Host` against a real `Tropic01Model`.
 
-**3. Enforcement.** CI runs the generator with `--check`, which regenerates in
-memory and fails if `docs/model_spec.js` differs. Drift is therefore a red
-build, not a thing someone notices later.
+**3. Enforcement.** The generator's `--check` mode regenerates in memory and
+fails if `docs/model_spec.js` differs. That gate runs **before every push**:
+
+```bash
+git config core.hooksPath .githooks   # once per clone
+```
+
+It runs locally rather than in CI on purpose. Regenerating requires a ts-tvl
+checkout, which is private; a workflow in this public repo would need a secret
+with read access to it, and a public repo's workflows are a poor place to keep
+one. Locally the same check costs nothing and has no blast radius. `--no-verify`
+bypasses it, which should show up in the commit message.
+
+CI still runs the render test on every push, and the `spec-is-current` job is
+written and ready — set the `TS_TVL_REPO` variable and a read-only
+`TS_TVL_TOKEN` secret and it arms itself. Until then it emits a warning rather
+than passing quietly.
 
 ```
 ts-tvl (Python)
@@ -84,9 +98,14 @@ floating.
 ## Testing
 
 ```bash
-npm install jsdom
-node tools/render_test.js
+npm install --no-save jsdom
+tools/check.sh [path-to-ts-tvl]     # both gates; what the pre-push hook runs
+node tools/render_test.js           # just the render assertions
 ```
+
+`check.sh` finds ts-tvl at `../ts-tvl`, or `$TS_TVL`, or the path you give it.
+If it cannot find one it **says the check was skipped** rather than passing
+silently - an anti-drift gate that quietly does nothing is worse than none.
 
 The render test loads the page in a headless DOM and asserts that every item in
 the spec reaches the screen — **counts derived from the spec, not hard-coded**.
@@ -101,6 +120,8 @@ docs/index.html        the page — single file, no CDN, works from file://
 docs/model_spec.js     GENERATED. everything the page knows
 tools/generate_spec.py the generator — introspects and executes ts-tvl
 tools/render_test.js   headless render assertions
+tools/check.sh         both gates, run by the pre-push hook
+.githooks/pre-push     refuses to push a page that no longer matches the model
 ```
 
 `model_spec.js` is JavaScript rather than JSON so the page works from a plain

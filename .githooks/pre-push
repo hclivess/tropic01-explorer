@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Refuse to push a page that no longer matches the model.
+#
+# The CI job that would do this needs read access to a private ts-tvl, which
+# means a secret in a public repo. Enforcing locally instead costs nothing and
+# has no blast radius.
+#
+# Enable once:  git config core.hooksPath .githooks
+# Bypass:       git push --no-verify   (say why in the commit message)
+exec "$(dirname "$0")/../tools/check.sh"
