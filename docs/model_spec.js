@@ -1053,6 +1053,128 @@ window.MODEL_SPEC = {
    "origin": "application"
   }
  ],
+ "examples": [
+  {
+   "any_volatile": false,
+   "calls": [
+    {
+     "got": "0180636869705f6964000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005855",
+     "kind": "L2",
+     "length_varies": false,
+     "name": "TsL2GetInfoRequest",
+     "repr_got": "TsL2GetInfoResponse<(status=01, length=80, object=[63, 68, 69, 70, 5f, 69, 64, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00], crc=5558)",
+     "repr_sent": "TsL2GetInfoRequest<(id=AUTO, length=AUTO, object_id=01, block_index=00, crc=AUTO)",
+     "sent": "010201002b92",
+     "volatile": false
+    }
+   ],
+   "error": null,
+   "name": "example_01_get_info_request.py",
+   "source": "#!/usr/bin/env python3\n\n# ######################################################################################\n# This test sends a GetInfo request to the Tropic01Model and prints the response.\n# ######################################################################################\n\nfrom tvl.api.l2_api import TsL2GetInfoRequest\nfrom tvl.host.host import Host\nfrom tvl.logging_utils import setup_logging\nfrom tvl.targets.model.tropic01_model import Tropic01Model\n\n# Configure logging\nsetup_logging()\n\n# Instantiate the target (in this case, `Tropic01Model`)\nmodel = Tropic01Model()\n\n# Instantiate the `Host`\nhost = Host(target=model)\n\n# Create a message (in this case `TsL2GetInfoRequest`)\nrequest = TsL2GetInfoRequest(object_id=1, block_index=0)\nprint(request)\n# > TsL2GetInfoRequest<(id=AUTO, length=AUTO, object_id=01, block_index=00, crc=AUTO)\n\n# Send the request and then receive the response\nresponse = host.send_request(request)\n\nprint(response)\n# > TsL2GetInfoResponse<(status=01, length=07, object=[63, 68, 69, 70, 5f, 69, 64], crc=f253)\n",
+   "stdout": "TsL2GetInfoRequest<(id=AUTO, length=AUTO, object_id=01, block_index=00, crc=AUTO)\nTsL2GetInfoResponse<(status=01, length=80, object=[63, 68, 69, 70, 5f, 69, 64, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00, 00], crc=5558)\n",
+   "title": "This test sends a GetInfo request to the Tropic01Model and prints the response."
+  },
+  {
+   "any_volatile": true,
+   "calls": [
+    {
+     "got": "0130....................................................................................................",
+     "kind": "L2",
+     "length_varies": false,
+     "name": "TsL2HandshakeRequest",
+     "repr_got": null,
+     "repr_sent": null,
+     "sent": "0221................................................................00....",
+     "volatile": true
+    },
+    {
+     "got": "c36465616462656566",
+     "kind": "L3",
+     "length_varies": false,
+     "name": "TsL3PingCommand",
+     "repr_got": "",
+     "repr_sent": "TsL3PingCommand<(id=AUTO, data_in=[64, 65, 61, 64, 62, 65, 65, 66])",
+     "sent": "016465616462656566",
+     "volatile": false
+    }
+   ],
+   "error": null,
+   "name": "example_02_secure_channel.py",
+   "source": "#!/usr/bin/env python3\n\n# ######################################################################################\n# This test establish a secure channel between the Tropic01Model and the Host.\n# ######################################################################################\n\nfrom pathlib import Path\n\nfrom tvl.api.l2_api import TsL2HandshakeRequest, TsL2HandshakeResponse\nfrom tvl.api.l3_api import TsL3PingCommand, TsL3PingResult\nfrom tvl.configuration_file_model import load_configuration_file\nfrom tvl.constants import L2StatusEnum, L3ResultFieldEnum\nfrom tvl.host.host import Host, SessionError\nfrom tvl.logging_utils import setup_logging\nfrom tvl.targets.model.tropic01_model import Tropic01Model\n\n# Load the configuration of the model and the host\nconfiguration = load_configuration_file(Path(__file__).parent / \"conf.yml\")\n\n# Configure logging\nsetup_logging()\n\n# Instantiate the model\nmodel = Tropic01Model.from_dict(configuration[\"model\"])\n\n# Instantiate the host\nhost = Host.from_dict(configuration[\"host\"]).set_target(model)\n\n# Secure channel is not yet established: Send a Ping command to confirm\nping_command_data_in = b\"deadbeef\"\n\nping_command = TsL3PingCommand(data_in=ping_command_data_in)\n\n# A SessionError should be raised\ntry:\n    ping_result = host.send_command(ping_command)\nexcept SessionError as exc:\n    print(exc)\n    # > Cannot encrypt command: no valid session\nelse:\n    assert False, \"SessionError should be raised\"\n\n# Establish a secure channel between the model and the host: Send a Handshake request\nhandshake_request = TsL2HandshakeRequest(\n    e_hpub=host.session.create_handshake_request(),\n    pkey_index=host.pairing_key_index,\n)\n\nhandshake_response = host.send_request(handshake_request)\n\nassert isinstance(handshake_response, TsL2HandshakeResponse)\nassert handshake_response.status.value == L2StatusEnum.REQ_OK\n\n# Check the secure channel session is well established: Send a Ping command\nping_result = host.send_command(ping_command)\n\nassert isinstance(ping_result, TsL3PingResult)\nassert ping_result.result.value == L3ResultFieldEnum.OK\nassert ping_result.data_out.value == ping_command.data_in.value\nassert ping_result.data_out.to_bytes() == ping_command_data_in\n",
+   "stdout": "Cannot encrypt command: no valid session.\n",
+   "title": "This test establish a secure channel between the Tropic01Model and the Host."
+  },
+  {
+   "any_volatile": true,
+   "calls": [
+    {
+     "got": "0130....................................................................................................",
+     "kind": "L2",
+     "length_varies": false,
+     "name": "TsL2HandshakeRequest",
+     "repr_got": null,
+     "repr_sent": null,
+     "sent": "0221................................................................00....",
+     "volatile": true
+    },
+    {
+     "got": "c36465616462656566",
+     "kind": "L3",
+     "length_varies": false,
+     "name": "TsL3PingCommand",
+     "repr_got": "",
+     "repr_sent": "TsL3PingCommand<(id=01, data_in=[64, 65, 61, 64, 62, 65, 65, 66])",
+     "sent": "016465616462656566",
+     "volatile": false
+    }
+   ],
+   "error": null,
+   "name": "example_03_secure_channel_raw_messages.py",
+   "source": "#!/usr/bin/env python3\n\n# ######################################################################################\n# This test establish a secure channel between the Tropic01Model and the Host.\n# The messages are created manually, i.e. without the classes offered by the TVL.\n# ######################################################################################\n\nfrom pathlib import Path\n\nfrom tvl.api.l2_api import L2Enum\nfrom tvl.api.l3_api import L3Enum\nfrom tvl.configuration_file_model import load_configuration_file\nfrom tvl.constants import L2StatusEnum, L3ResultFieldEnum\nfrom tvl.host.host import Host, SessionError\nfrom tvl.logging_utils import setup_logging\nfrom tvl.messages.l2_messages import crc16\nfrom tvl.targets.model.tropic01_model import Tropic01Model\n\n\ndef crc(data: bytes) -> bytes:\n    return crc16(data).to_bytes(2, byteorder=\"little\")\n\n\n# Load the configuration of the model and the host\nconfiguration = load_configuration_file(Path(__file__).parent / \"conf.yml\")\n\n# pairing key index\npairing_key_index: int = configuration[\"host\"][\"pairing_key_index\"]\npairing_key_index_bytes = bytes([pairing_key_index])\n\n# Configure logging\nsetup_logging()\n\n# Instantiate the model\nmodel = Tropic01Model.from_dict(configuration[\"model\"])\n\n# Instantiate the host\nhost = Host.from_dict(configuration[\"host\"]).set_target(model)\n\n# Secure channel is not yet established: Send a Ping command to confirm\nping_command_data_in = b\"deadbeef\"\n\n# Create command field by field\nping_command_bytes = bytes([L3Enum.PING]) + ping_command_data_in  # CMD_ID  # CMD_DATA\n\n# A SessionError should be raised\ntry:\n    ping_result_bytes = host.send_command(ping_command_bytes)\nexcept SessionError as exc:\n    print(exc)\n    # > Cannot encrypt command: no valid session\nelse:\n    assert False, \"SessionError should be raised\"\n\n# Establish a secure channel between the model and the host: Send a Handshake request\ne_hpub = host.session.create_handshake_request()\n\n# Create request field by field\nhandshake_request_bytes = (\n    bytes([L2Enum.HANDSHAKE])  # REQ_ID\n    + bytes([len(e_hpub) + len(pairing_key_index_bytes)])  # REQ_LEN\n    + e_hpub  # e_hpub field of REQ_DATA\n    + pairing_key_index_bytes  # pkey_index field of REQ_DATA\n)\nhandshake_request_bytes += crc(handshake_request_bytes)  # REQ_CRC\n\nhandshake_response_bytes = host.send_request(handshake_request_bytes)\n\nassert handshake_response_bytes[0] == L2StatusEnum.REQ_OK  # check STATUS\n\n# Check the secure channel session is well established: Send a Ping command\nping_result_bytes = host.send_command(ping_command_bytes)\n\nassert ping_result_bytes[0] == L3ResultFieldEnum.OK  # check RESULT\nassert ping_result_bytes[1:] == ping_command_data_in  # check RES_DATA\n",
+   "stdout": "Cannot encrypt command: no valid session.\n",
+   "title": "This test establish a secure channel between the Tropic01Model and the Host."
+  },
+  {
+   "any_volatile": true,
+   "calls": [
+    {
+     "got": "0130....................................................................................................",
+     "kind": "L2",
+     "length_varies": false,
+     "name": "TsL2HandshakeRequest",
+     "repr_got": null,
+     "repr_sent": null,
+     "sent": "0221................................................................00....",
+     "volatile": true
+    },
+    {
+     "got": null,
+     "kind": "L3",
+     "length_varies": true,
+     "name": "TsL3PingCommand",
+     "repr_got": "",
+     "repr_sent": null,
+     "sent": null,
+     "volatile": true
+    },
+    {
+     "got": "c3000000................................................................",
+     "kind": "L3",
+     "length_varies": false,
+     "name": "TsL3MacAndDestroyCommand",
+     "repr_got": "",
+     "repr_sent": null,
+     "sent": "90..0000................................................................",
+     "volatile": true
+    }
+   ],
+   "error": null,
+   "name": "example_04_mac_and_destroy.py",
+   "source": "#!/usr/bin/env python3\n\n# #############################################################################\n# This example establishes a secure channel between the model and the host.\n# It then performs a Mac-and-Destroy operation.\n# #############################################################################\n\nimport os\nfrom pathlib import Path\nfrom random import randint\n\nfrom tvl.api.l2_api import TsL2HandshakeRequest, TsL2HandshakeResponse\nfrom tvl.api.l3_api import (\n    TsL3MacAndDestroyCommand,\n    TsL3MacAndDestroyResult,\n    TsL3PingCommand,\n    TsL3PingResult,\n)\nfrom tvl.configuration_file_model import load_configuration_file\nfrom tvl.constants import L2StatusEnum, L3ResultFieldEnum\nfrom tvl.host.host import Host\nfrom tvl.logging_utils import setup_logging\n\nfrom tvl.targets.model.tropic01_model import Tropic01Model\n\n# Load the configuration of the model and the host\nconfiguration = load_configuration_file(Path(__file__).parent / \"conf.yml\")\n\n# Configure logging\nsetup_logging()\n\n# Instantiate the model\nmodel = Tropic01Model.from_dict(configuration[\"model\"])\n\n# Instantiate the host\nhost = Host.from_dict(configuration[\"host\"]).set_target(model)\n\n# Establish a secure channel between the model and the host:\n# send a Handshake request\nhandshake_request = TsL2HandshakeRequest(\n    e_hpub=host.session.create_handshake_request(),\n    pkey_index=host.pairing_key_index,\n)\n\nhandshake_response = host.send_request(handshake_request)\n\nassert isinstance(handshake_response, TsL2HandshakeResponse)\nassert handshake_response.status.value == L2StatusEnum.REQ_OK\n\n# Check the secure channel session is well established: send a Ping command\nping_command_data_in = os.urandom(randint(1, 32))\n\nping_command = TsL3PingCommand(data_in=ping_command_data_in)\nping_result = host.send_command(ping_command)\n\nassert isinstance(ping_result, TsL3PingResult)\nassert ping_result.result.value == L3ResultFieldEnum.OK\nassert ping_result.data_out.value == ping_command.data_in.value\nassert ping_result.data_out.to_bytes() == ping_command_data_in\n\n# Perform the Mac-and-Destroy operation\nmacandd_command_slot = randint(1, 128)\nmacandd_command_data_in = os.urandom(32)\n\nmacandd_command = TsL3MacAndDestroyCommand(\n    slot=macandd_command_slot, data_in=macandd_command_data_in\n)\nmacandd_result = host.send_command(macandd_command)\n\nassert isinstance(macandd_result, TsL3MacAndDestroyResult)\nassert macandd_result.result.value == L3ResultFieldEnum.OK\n",
+   "stdout": "",
+   "title": "This example establishes a secure channel between the model and the host."
+  }
+ ],
  "exchanges": [
   {
    "chip_status_after": 5,

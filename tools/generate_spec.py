@@ -613,6 +613,165 @@ def exchanges() -> List[Dict[str, Any]]:
     return out
 
 
+def repo_examples(ts_tvl: pathlib.Path) -> List[Dict[str, Any]]:
+    """Run ts-tvl's own example scripts and record what they did.
+
+    These are not examples written for this page; they are the files shipped in
+    `examples/`, executed unmodified. `Host.send_request` and
+    `Host.send_command` are wrapped for the duration so every exchange is
+    recorded, and stdout is captured, so the page can show the script, what it
+    printed, and the bytes underneath it side by side.
+
+    Each script is run several times and the recordings compared. Anything that
+    differs is session-dependent - ephemeral X25519 keys, the ciphertext and tag
+    they produce - and is masked rather than committed, because a spec that
+    changes every run would fail `--check` forever. The masking is derived, not
+    guessed: it is exactly the bytes that actually moved.
+
+    Two runs is not enough, which is worth spelling out because it looked like
+    it was. A uniformly random byte matches across two runs 1 time in 256, so a
+    128-byte ephemeral payload leaves roughly half a byte unmasked *by luck*
+    each time - and a different half on the next invocation, which makes the
+    generated file differ from itself and `--check` fail on unchanged code.
+    With RUNS runs the odds of a random byte surviving unmasked are 256^-(RUNS-1),
+    which at 6 is about 1e-12.
+    """
+    RUNS = 6
+    import contextlib
+    import io
+    import runpy
+
+    directory = ts_tvl / "examples"
+    if not directory.is_dir():
+        return []
+
+    def record(path: pathlib.Path) -> Dict[str, Any]:
+        calls: List[Dict[str, Any]] = []
+        original_request = Host._ll_send_l2
+        original_command = Host._ll_send_l3
+
+        # Hook `_ll_send_l2` / `_ll_send_l3`, not `send_request` /
+        # `send_command`. The public two are `singledispatchmethod`s whose
+        # registries are captured at class-definition time, so replacing them
+        # loses the dispatch and every call dies in the base implementation.
+        # These two are plain methods that all four registered variants funnel
+        # through, which makes them the one honest chokepoint.
+        def wrap_l2(original: Any) -> Any:
+            def wrapper(self: Any, l2request: Any) -> Any:
+                response, raw = original(self, l2request)
+                calls.append(
+                    {
+                        "kind": "L2",
+                        "name": type(l2request).__name__,
+                        "sent": bytes(l2request.to_bytes()).hex(),
+                        "got": bytes(raw).hex(),
+                        "repr_sent": str(l2request),
+                        "repr_got": str(response),
+                    }
+                )
+                return response, raw
+            return wrapper
+
+        def wrap_l3(original: Any) -> Any:
+            def wrapper(self: Any, l3command: Any) -> Any:
+                raw = original(self, l3command)
+                calls.append(
+                    {
+                        "kind": "L3",
+                        "name": type(l3command).__name__,
+                        "sent": bytes(l3command.to_bytes()).hex(),
+                        "got": bytes(raw).hex(),
+                        "repr_sent": str(l3command),
+                        "repr_got": "",
+                    }
+                )
+                return raw
+            return wrapper
+
+        Host._ll_send_l2 = wrap_l2(original_request)  # type: ignore[assignment]
+        Host._ll_send_l3 = wrap_l3(original_command)  # type: ignore[assignment]
+        out = io.StringIO()
+        error: Optional[str] = None
+        try:
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+                runpy.run_path(str(path), run_name="__not_main__")
+        except Exception as exc:  # an example that breaks is worth showing
+            error = f"{type(exc).__name__}: {exc}"
+        finally:
+            Host._ll_send_l2 = original_request  # type: ignore[assignment]
+            Host._ll_send_l3 = original_command  # type: ignore[assignment]
+        return {"calls": calls, "stdout": out.getvalue(), "error": error}
+
+    def mask(values: List[str]) -> Optional[str]:
+        """Hex with session-dependent nibbles replaced by '.', or None.
+
+        None means the *length* moved between runs, not just the contents. There
+        is no honest fixed-length rendering of that - masking a random-length
+        string keeps a random prefix, which is how this defeated `--check` once
+        already - so the bytes are not committed and the page says why.
+        """
+        if len({len(v) for v in values}) != 1:
+            return None
+        return "".join(
+            column[0] if len(set(column)) == 1 else "." for column in zip(*values)
+        )
+
+    def agree(values: List[Any]) -> Any:
+        """The value if every run produced it, else None."""
+        return values[0] if all(v == values[0] for v in values) else None
+
+    examples: List[Dict[str, Any]] = []
+    for path in sorted(directory.glob("example_*.py")):
+        runs = [record(path) for _ in range(RUNS)]
+        merged = []
+        for index in range(len(runs[0]["calls"])):
+            group = [r["calls"][index] for r in runs]
+            sent = mask([c["sent"] for c in group])
+            got = mask([c["got"] for c in group])
+            # Deliberately not recording the observed lengths: that is a sample
+            # of random values, so committing it makes the file differ from
+            # itself. "the length is session-dependent" is the whole stable fact.
+            merged.append(
+                {
+                    "kind": group[0]["kind"],
+                    "name": group[0]["name"],
+                    "sent": sent,
+                    "got": got,
+                    "length_varies": sent is None or got is None,
+                    "repr_sent": agree([c["repr_sent"] for c in group]),
+                    "repr_got": agree([c["repr_got"] for c in group]),
+                    "volatile": (sent is None or "." in sent)
+                                or (got is None or "." in got),
+                }
+            )
+        source = path.read_text()
+        examples.append(
+            {
+                "name": path.name,
+                "title": _example_title(source) or path.stem.replace("_", " "),
+                "source": source,
+                "stdout": agree([r["stdout"] for r in runs]),
+                "error": runs[0]["error"],
+                "calls": merged,
+                "any_volatile": any(c["volatile"] for c in merged),
+            }
+        )
+    return examples
+
+
+def _example_title(source: str) -> Optional[str]:
+    """The sentence in the example's own banner comment, if it has one."""
+    lines = [
+        line.lstrip("# ").strip()
+        for line in source.splitlines()
+        if line.startswith("#") and set(line.strip()) != {"#"}
+    ]
+    for line in lines:
+        if line and not line.startswith("!") and len(line) > 20:
+            return line
+    return None
+
+
 def frame_layouts() -> Dict[str, Any]:
     return {
         "request": [
@@ -701,6 +860,9 @@ def _build() -> Dict[str, Any]:
         "boot_transitions": boot_transitions(),
         "wire_traces": wire_traces(),
         "exchanges": exchanges(),
+        "examples": repo_examples(
+            pathlib.Path(inspect.getfile(__import__("tvl"))).parent.parent
+        ),
     }
 
 

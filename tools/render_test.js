@@ -73,7 +73,10 @@ dom.window.addEventListener("load", () => {
   if (errors.length) errors.forEach((e) => console.log("        " + e));
 
   // structure
-  check("tabs", n("nav button"), 6);
+  // Derived, not a magic number: one nav button per tab section, so adding a
+  // tab does not require editing this file (and forgetting to wire its button
+  // still fails).
+  check("a nav button per tab section", n("nav button"), n('section[id^="tab-"]'));
   check("nested tables (invalid HTML)", n("table table"), 0);
   check("empty tables", n("table:not(:has(tbody tr))"), 0);
 
@@ -172,8 +175,16 @@ dom.window.addEventListener("load", () => {
         d.getElementById("try-main").textContent !== paneBefore, true);
       check("switching mode marks the new button pressed",
         notSelected.getAttribute("aria-pressed"), "true");
-      check("Try-it selector does not disturb the boot panel",
-        d.getElementById("log").textContent, bootLogBefore);
+      // The two panels are deliberately one chip now: switching mode here must
+      // move the boot panel's readout and say so in its log. (This assertion
+      // used to demand the opposite, and the pre-push hook caught the
+      // contradiction the moment the behaviour changed.)
+      check("mode change moves the boot readout",
+        d.getElementById("r-mode").textContent, notSelected.textContent);
+      check("mode change is recorded in the boot log",
+        d.getElementById("log").textContent !== bootLogBefore, true);
+      check("direct set clears the stale transition status",
+        d.getElementById("r-status").textContent, "—");
     }
 
     if (modeBtn) {
@@ -189,6 +200,22 @@ dom.window.addEventListener("load", () => {
       }
     }
   }
+
+  // the repository's own examples must all reach the page
+  atLeast("examples", (spec.examples || []).length, 1);
+  check("example panels", n("#examples > .panel"), spec.examples.length);
+  check("example sources shown", n("#examples .src"), spec.examples.length);
+  const totalCalls = spec.examples.reduce((a, x) => a + x.calls.length, 0);
+  check("example exchanges shown", n("#examples .call"), totalCalls);
+  const l3Calls = spec.examples.reduce(
+    (a, x) => a + x.calls.filter((c) => c.kind === "L3").length, 0);
+  check("L3 exchanges marked", n("#examples .call.l3"), l3Calls);
+  const withOutput = spec.examples.filter((x) => x.stdout).length;
+  check("captured stdout shown", n("#examples .out"), withOutput);
+  check("no example raised", spec.examples.filter((x) => x.error).length, 0);
+  // masking must be visible wherever the capture says bytes moved
+  const anyVolatile = spec.examples.some((x) => x.any_volatile);
+  check("session-dependent bytes are marked", n("#examples .vol") > 0, anyVolatile);
 
   // the boot toggles go through the same shared helper
   const fwNo = [...d.querySelectorAll("#seg-fw button")].find((b) => b.textContent === "no");
