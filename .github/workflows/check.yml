@@ -1,0 +1,65 @@
+name: check
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  render:
+    # Needs nothing but this repository: proves the page still renders every
+    # item the committed spec contains.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install --no-save jsdom
+      - run: node tools/render_test.js
+
+  spec-is-current:
+    # The anti-drift gate. Regenerates from ts-tvl and fails if the committed
+    # docs/model_spec.js differs - i.e. the model changed and the page did not.
+    #
+    # Needs read access to the ts-tvl checkout the spec was generated from. Set
+    # repository variables TS_TVL_REPO and TS_TVL_REF, and a secret TS_TVL_TOKEN
+    # with read access if that repository is private. Without them the job
+    # reports that it was skipped rather than passing quietly.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: cfg
+        run: |
+          if [ -z "${{ vars.TS_TVL_REPO }}" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Drift gate not configured::" \
+              "Set the TS_TVL_REPO variable (and TS_TVL_TOKEN secret if private)" \
+              "to enable the spec staleness check. The page is NOT being checked" \
+              "against the model."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.cfg.outputs.configured == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.TS_TVL_REPO }}
+          ref: ${{ vars.TS_TVL_REF || '' }}
+          token: ${{ secrets.TS_TVL_TOKEN || github.token }}
+          path: ts-tvl
+
+      - if: steps.cfg.outputs.configured == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - if: steps.cfg.outputs.configured == 'true'
+        run: pip install -e ./ts-tvl
+
+      - if: steps.cfg.outputs.configured == 'true'
+        name: docs/model_spec.js must match the model
+        run: |
+          PYTHONPATH=ts-tvl python3 tools/generate_spec.py \
+            --out docs/model_spec.js --check

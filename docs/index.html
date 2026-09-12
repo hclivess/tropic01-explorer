@@ -1,0 +1,603 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TROPIC01 Explorer</title>
+<style>
+:root {
+  --bg: #0e1116; --panel: #161b22; --edge: #272e37; --edge2: #3a434f;
+  --ink: #d6dde6; --dim: #8b97a6; --faint: #5d6875;
+  --app: #58b368; --boot: #d98a3a; --wire: #6ba6e8;
+  --hot: #e05c5c; --ok: #58b368; --accent: #c9a227;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 14px/1.55 var(--mono);
+}
+a { color: var(--wire); }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 24px 16px 64px; }
+
+header { border-bottom: 1px solid var(--edge); padding-bottom: 14px; margin-bottom: 18px; }
+h1 { font-size: 19px; margin: 0 0 4px; letter-spacing: .02em; font-weight: 600; }
+.sub { color: var(--dim); font-size: 12px; }
+.sub b { color: var(--ink); font-weight: 600; }
+
+nav { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0 20px; }
+nav button {
+  font: inherit; font-size: 12.5px; color: var(--dim); cursor: pointer;
+  background: var(--panel); border: 1px solid var(--edge); border-radius: 5px;
+  padding: 6px 11px;
+}
+nav button:hover { color: var(--ink); border-color: var(--edge2); }
+nav button[aria-selected="true"] { color: var(--bg); background: var(--ink); border-color: var(--ink); }
+
+section[hidden] { display: none; }
+h2 { font-size: 14px; margin: 26px 0 10px; font-weight: 600; letter-spacing: .03em; }
+h2:first-child { margin-top: 0; }
+p.note { color: var(--dim); font-size: 12.5px; max-width: 78ch; margin: 0 0 14px; }
+
+.panel { background: var(--panel); border: 1px solid var(--edge); border-radius: 7px; padding: 14px 16px; margin-bottom: 14px; }
+
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+th, td { text-align: left; padding: 5px 9px; border-bottom: 1px solid var(--edge); vertical-align: top; }
+th { color: var(--faint); font-weight: 600; text-transform: uppercase; font-size: 10.5px; letter-spacing: .07em; }
+tr:last-child td { border-bottom: none; }
+td.doc { color: var(--dim); font-size: 12px; }
+.scroll { overflow-x: auto; }
+
+.tag { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10.5px; letter-spacing: .04em; border: 1px solid; }
+.tag.app { color: var(--app); border-color: var(--app); }
+.tag.boot { color: var(--boot); border-color: var(--boot); }
+.tag.no { color: var(--faint); border-color: var(--edge2); }
+.tag.hot { color: var(--hot); border-color: var(--hot); }
+
+/* boot panel */
+.controls { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-end; }
+.ctl { display: flex; flex-direction: column; gap: 5px; }
+.ctl label { font-size: 10.5px; color: var(--faint); text-transform: uppercase; letter-spacing: .07em; }
+.seg { display: flex; border: 1px solid var(--edge2); border-radius: 5px; overflow: hidden; }
+.seg button { font: inherit; font-size: 12px; background: transparent; color: var(--dim); border: 0; padding: 6px 12px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--edge2); }
+.seg button[aria-pressed="true"] { background: var(--edge2); color: var(--ink); }
+.act { display: flex; gap: 8px; flex-wrap: wrap; }
+.act button {
+  font: inherit; font-size: 12.5px; cursor: pointer; padding: 7px 13px;
+  border-radius: 5px; border: 1px solid var(--edge2); background: #1d242d; color: var(--ink);
+}
+.act button:hover:not(:disabled) { border-color: var(--wire); }
+.act button:disabled { opacity: .35; cursor: not-allowed; }
+
+.readout { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.card { flex: 1 1 210px; border: 1px solid var(--edge); border-radius: 6px; padding: 11px 13px; background: #12171e; }
+.card .k { font-size: 10.5px; color: var(--faint); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 5px; }
+.card .v { font-size: 17px; font-weight: 600; }
+.v.app { color: var(--app); } .v.boot { color: var(--boot); }
+.v.ok { color: var(--ok); } .v.hot { color: var(--hot); }
+
+.bits { display: flex; gap: 5px; margin-top: 7px; flex-wrap: wrap; }
+.bit { border: 1px solid var(--edge2); border-radius: 4px; padding: 3px 7px; font-size: 10.5px; color: var(--faint); }
+.bit.on { color: var(--bg); background: var(--accent); border-color: var(--accent); font-weight: 600; }
+
+.log { margin-top: 12px; max-height: 190px; overflow-y: auto; font-size: 12px; }
+.log div { padding: 3px 0; border-bottom: 1px solid var(--edge); color: var(--dim); }
+.log div:last-child { border-bottom: 0; }
+.log b { color: var(--ink); font-weight: 600; }
+
+/* CO map */
+.map { display: grid; grid-template-columns: repeat(16, 1fr); gap: 2px; }
+.cell { aspect-ratio: 1; border-radius: 2px; background: #1a212a; border: 1px solid transparent; }
+.cell.bootreg { background: var(--boot); }
+.cell.appreg { background: var(--app); }
+.cell.sel { border-color: var(--ink); }
+.cell[data-name] { cursor: pointer; }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; font-size: 11.5px; color: var(--dim); }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 5px; }
+
+.fieldbar { display: flex; border: 1px solid var(--edge2); border-radius: 4px; overflow: hidden; margin: 8px 0 4px; }
+.fieldbar div { padding: 5px 4px; font-size: 10.5px; text-align: center; border-right: 1px solid var(--edge2); color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fieldbar div:last-child { border-right: 0; }
+.fieldbar div.named { background: #1d242d; color: var(--ink); }
+
+/* wire */
+.frame { display: flex; flex-wrap: wrap; gap: 4px; margin: 7px 0; }
+.fld { border: 1px solid var(--edge2); border-radius: 4px; padding: 4px 8px; font-size: 11.5px; }
+.fld .n { color: var(--faint); font-size: 9.5px; text-transform: uppercase; letter-spacing: .07em; display: block; }
+.fld.status { border-color: var(--accent); }
+.fld.data { border-color: var(--wire); }
+.dir { color: var(--faint); width: 1.4em; display: inline-block; }
+.ascii { color: var(--accent); }
+
+footer { margin-top: 34px; padding-top: 14px; border-top: 1px solid var(--edge); color: var(--faint); font-size: 11.5px; }
+code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>TROPIC01 Explorer</h1>
+  <div class="sub" id="prov"></div>
+</header>
+
+<nav id="tabs"></nav>
+
+<section id="tab-boot">
+  <h2>Boot state machine</h2>
+  <p class="note">
+    Every outcome below was produced by <em>executing</em> the model, not by
+    describing it. Set the conditions, press an action, and the panel looks the
+    answer up in a table captured from real <code>_boot()</code> runs — one row
+    per combination of starting mode, action, <code>MAINTENANCE_ENA</code> and
+    whether a RISC-V FW bank is populated.
+  </p>
+  <div class="panel">
+    <div class="controls">
+      <div class="ctl">
+        <label>CFG_START_UP.MAINTENANCE_ENA</label>
+        <div class="seg" id="seg-maint"></div>
+      </div>
+      <div class="ctl">
+        <label>RISC-V FW bank populated</label>
+        <div class="seg" id="seg-fw"></div>
+      </div>
+      <div class="ctl" style="flex:1 1 260px">
+        <label>Action</label>
+        <div class="act" id="acts"></div>
+      </div>
+    </div>
+    <div class="readout">
+      <div class="card"><div class="k">Chip mode</div><div class="v" id="r-mode">—</div></div>
+      <div class="card"><div class="k">Last L2 status</div><div class="v" id="r-status">—</div></div>
+      <div class="card">
+        <div class="k">CHIP_STATUS byte</div>
+        <div class="v" id="r-chip">—</div>
+        <div class="bits" id="r-bits"></div>
+      </div>
+    </div>
+    <div class="log" id="log"></div>
+  </div>
+  <h2>The captured table</h2>
+  <div class="panel scroll"><div id="t-boot"></div></div>
+</section>
+
+<section id="tab-co" hidden>
+  <h2>Configuration Object</h2>
+  <p class="note">
+    512 bytes, 128 word-aligned registers. Erased state is all ones and writes
+    only ever clear bits, so every field is a one-way fuse. The chip obeys
+    <code>i_config &amp; r_config</code>, latched at start-up — the running
+    firmware reads that latch through shared memory, never memory itself.
+    Click a register.
+  </p>
+  <div class="panel">
+    <div class="map" id="map"></div>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--boot)"></span>bootloader CO (below 0x14)</span>
+      <span><span class="sw" style="background:var(--app)"></span>application CO (0x14 and up)</span>
+      <span><span class="sw" style="background:#1a212a"></span>no register defined</span>
+    </div>
+  </div>
+  <div class="panel" id="reg-detail"></div>
+  <h2>All registers</h2>
+  <div class="panel scroll"><div id="t-co"></div></div>
+</section>
+
+<section id="tab-l2" hidden>
+  <h2>L2 request gating</h2>
+  <p class="note">
+    A mode exposes an API surface; a request outside it is not "refused", it is
+    a request the running firmware does not implement — which is why silicon
+    answers <code>UNKNOWN_REQ</code>. The reason column is the comment on each
+    row of the model's own table, read out of the source.
+  </p>
+  <div class="panel scroll"><div id="t-l2"></div></div>
+  <h2>Get_Info objects per mode</h2>
+  <p class="note">
+    The same opcode, answered by two different firmwares. An object a firmware
+    does not serve is <em>absent from its table</em> rather than rejected by a
+    branch.
+  </p>
+  <div class="panel scroll" id="t-oid"></div>
+</section>
+
+<section id="tab-wire" hidden>
+  <h2>Wire traces</h2>
+  <p class="note">
+    Real bytes, captured by driving the model. Determinism is forced — the RNG
+    is pinned and the busy simulation disabled — which is why two handshakes
+    give identical bytes. On silicon that would be alarming; here it is the
+    proof that nothing is floating.
+  </p>
+  <div id="wire"></div>
+</section>
+
+<section id="tab-fw" hidden>
+  <h2>Firmware bank header</h2>
+  <p class="note">
+    Two banks per firmware is what makes a fail-safe update possible: the new
+    image goes to the inactive bank and is only then activated. The header is
+    readable only in Start-up mode, via <code>Get_Info(FW_BANK)</code>. The
+    offsets below are derived from the model's own <code>struct</code> format
+    string, so they cannot disagree with what it packs.
+  </p>
+  <div class="panel" id="fwhdr"></div>
+  <h2>Bank IDs</h2>
+  <div class="panel scroll"><div id="t-banks"></div></div>
+</section>
+
+<section id="tab-about" hidden>
+  <h2>Why this cannot drift</h2>
+  <div class="panel" id="about"></div>
+</section>
+
+<footer id="foot"></footer>
+</div>
+
+<script src="model_spec.js"></script>
+<script>
+(function () {
+  "use strict";
+  const S = window.MODEL_SPEC;
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, props, kids) => {
+    const n = Object.assign(document.createElement(tag), props || {});
+    (kids || []).forEach((k) => n.append(k));
+    return n;
+  };
+  const hex = (n, w) => "0x" + n.toString(16).toUpperCase().padStart(w || 2, "0");
+  const esc = (s) => String(s == null ? "" : s);
+
+  /* ---------- header / provenance ---------- */
+  const P = S.provenance;
+  $("prov").innerHTML =
+    "Generated from ts-tvl <b>" + esc(P.ts_tvl_describe) + "</b> " +
+    "(branch <b>" + esc(P.ts_tvl_branch) + "</b>) — " +
+    S.co_registers.length + " CO registers, " +
+    S.l2_requests.length + " L2 requests, " +
+    S.boot_transitions.length + " captured boot transitions, " +
+    S.wire_traces.length + " traces.";
+
+  /* ---------- tabs ---------- */
+  const TABS = [
+    ["boot", "Boot"], ["co", "Configuration Object"], ["l2", "L2 API"],
+    ["wire", "Wire"], ["fw", "FW banks"], ["about", "How it works"],
+  ];
+  const nav = $("tabs");
+  TABS.forEach(([id, label], i) => {
+    const b = el("button", { textContent: label });
+    b.setAttribute("aria-selected", i === 0 ? "true" : "false");
+    b.onclick = () => {
+      TABS.forEach(([id2]) => { $("tab-" + id2).hidden = true; });
+      [...nav.children].forEach((c) => c.setAttribute("aria-selected", "false"));
+      $("tab-" + id).hidden = false;
+      b.setAttribute("aria-selected", "true");
+      try { location.hash = id; } catch (e) { /* file:// can refuse */ }
+    };
+    nav.append(b);
+  });
+  const initial = TABS.findIndex(([id]) => "#" + id === location.hash);
+  if (initial > 0) nav.children[initial].click();
+
+  const table = (head, rows) => {
+    const t = el("table");
+    t.append(el("thead", {}, [el("tr", {}, head.map((h) => el("th", { textContent: h })))]));
+    const tb = el("tbody");
+    rows.forEach((r) => {
+      const tr = el("tr");
+      r.forEach((c) => {
+        const td = el("td");
+        if (c instanceof Node) td.append(c); else td.innerHTML = esc(c);
+        tr.append(td);
+      });
+      tb.append(tr);
+    });
+    t.append(tb);
+    return t;
+  };
+  const put = (id, node) => { const n = $(id); n.innerHTML = ""; n.append(node); };
+
+  /* ================= BOOT ================= */
+  const modeDoc = {}; S.chip_modes.forEach((m) => (modeDoc[m.name] = m.doc));
+  const statusName = {}; S.l2_status_codes.forEach((s) => (statusName[s.value] = s.name));
+
+  const st = {
+    maint: 1,
+    fw: true,
+    mode: S.chip_modes.some((m) => m.name === "APPLICATION") ? "APPLICATION" : S.chip_modes[0].name,
+    status: null,
+    chip: null,
+  };
+
+  function segment(node, opts, get, set) {
+    node.innerHTML = "";
+    opts.forEach(([label, value]) => {
+      const b = el("button", { textContent: label });
+      b.setAttribute("aria-pressed", String(get() === value));
+      b.onclick = () => { set(value); settle(); renderBoot(); };
+      node.append(b);
+    });
+  }
+
+  function reachable(mode) {
+    return S.boot_transitions.some(
+      (r) => r.from === mode && r.maintenance_ena === st.maint && r.has_riscv_fw === st.fw
+    );
+  }
+  function settle() {
+    // A chip with no FW cannot sit in Application mode, so toggling the FW
+    // switch can strand us somewhere the capture has no rows for. Move to a
+    // state that was actually observed rather than offering dead buttons.
+    if (reachable(st.mode)) return;
+    const alt = S.chip_modes.map((m) => m.name).find(reachable);
+    if (alt) { st.mode = alt; st.status = null; st.chip = null;
+      logLines.unshift("<b>settled</b> · no captured state for that combination · now <b>" + alt + "</b>"); }
+  }
+
+  function findRow(action) {
+    return S.boot_transitions.find(
+      (r) => r.from === st.mode && r.action === action &&
+             r.maintenance_ena === st.maint && r.has_riscv_fw === st.fw
+    );
+  }
+
+  const logLines = [];
+  function act(action) {
+    const row = findRow(action);
+    if (!row) return;
+    const from = st.mode;
+    st.mode = row.to; st.status = row.l2_status; st.chip = row.chip_status;
+    const s = row.l2_status === null
+      ? "power-on"
+      : hex(row.l2_status) + " " + (statusName[row.l2_status] || "?");
+    logLines.unshift(
+      "<b>" + action + "</b> · " + from + " → <b>" + row.to + "</b> · " + s +
+      " · CHIP_STATUS " + hex(row.chip_status)
+    );
+    renderBoot();
+  }
+
+  function renderBoot() {
+    segment($("seg-maint"), [["1 enabled", 1], ["0 disabled", 0]],
+      () => st.maint, (v) => { st.maint = v; });
+    segment($("seg-fw"), [["yes", true], ["no", false]],
+      () => st.fw, (v) => { st.fw = v; });
+
+    const acts = $("acts"); acts.innerHTML = "";
+    const actions = [...new Set(S.boot_transitions.map((r) => r.action))];
+    actions.forEach((a) => {
+      const row = findRow(a);
+      const b = el("button", { textContent: a.replace(/_/g, " ").toLowerCase() });
+      b.disabled = !row;
+      b.title = row ? "" : "no captured row for this state";
+      b.onclick = () => act(a);
+      acts.append(b);
+    });
+
+    const isBoot = st.mode === "START_UP";
+    const m = $("r-mode");
+    m.textContent = st.mode; m.className = "v " + (isBoot ? "boot" : "app");
+    const stn = $("r-status");
+    if (st.status === null || st.status === undefined) { stn.textContent = "—"; stn.className = "v"; }
+    else {
+      stn.textContent = hex(st.status) + " " + (statusName[st.status] || "?");
+      stn.className = "v " + (st.status === 1 ? "ok" : "hot");
+    }
+    const c = $("r-chip");
+    c.textContent = st.chip === null || st.chip === undefined ? "—" : hex(st.chip);
+    const bits = $("r-bits"); bits.innerHTML = "";
+    S.chip_status_flags.forEach((f) => {
+      const on = st.chip != null && (st.chip & f.value) !== 0;
+      bits.append(el("span", { className: "bit" + (on ? " on" : ""), textContent: f.name }));
+    });
+    $("log").innerHTML = logLines.slice(0, 40).map((l) => "<div>" + l + "</div>").join("");
+  }
+
+  put("t-boot", table(
+    ["from", "action", "MAINT_ENA", "has FW", "→ mode", "L2 status", "CHIP_STATUS"],
+    S.boot_transitions.map((r) => [
+      r.from, r.action, String(r.maintenance_ena), r.has_riscv_fw ? "yes" : "no",
+      '<span class="tag ' + (r.to === "START_UP" ? "boot" : "app") + '">' + r.to + "</span>",
+      r.l2_status === null ? "—" :
+        '<span class="tag ' + (r.l2_status === 1 ? "app" : "hot") + '">' +
+        hex(r.l2_status) + " " + (statusName[r.l2_status] || "?") + "</span>",
+      hex(r.chip_status),
+    ])
+  ));
+  renderBoot();
+
+  /* ================= CONFIGURATION OBJECT ================= */
+  const A = S.co_address_space;
+  const byAddr = {}; S.co_registers.forEach((r) => (byAddr[r.address] = r));
+  const map = $("map");
+  for (let a = 0; a < A.size_bytes; a += A.register_size_bytes) {
+    const r = byAddr[a];
+    const cell = el("div", {
+      className: "cell" + (r ? (r.origin === "application" ? " appreg" : " bootreg") : ""),
+      title: r ? r.name + " @ " + hex(a, 3) : hex(a, 3),
+    });
+    if (r) { cell.dataset.name = r.name; cell.onclick = () => showReg(r.name); }
+    map.append(cell);
+  }
+
+  function showReg(name) {
+    const r = S.co_registers.find((x) => x.name === name);
+    [...map.children].forEach((c) => c.classList.toggle("sel", c.dataset.name === name));
+    const box = $("reg-detail");
+    box.innerHTML = "";
+    box.append(el("div", {}, [
+      el("strong", { textContent: r.name }),
+      el("span", { className: "sub", textContent:
+        "  " + hex(r.address, 3) + " · " + r.class + " · " + r.origin +
+        " CO · " + r.half + " half" }),
+    ]));
+
+    // 32 bits, MSB left, named spans merged.
+    const bar = el("div", { className: "fieldbar" });
+    const slots = new Array(32).fill(null);
+    r.fields.forEach((f) => { for (let i = 0; i < f.width; i++) slots[f.offset + i] = f; });
+    let i = 31;
+    while (i >= 0) {
+      const f = slots[i];
+      let run = 1;
+      while (i - run >= 0 && slots[i - run] === f) run++;
+      const d = el("div", {
+        className: f ? "named" : "",
+        textContent: f ? f.name : "·",
+        title: f ? f.name + " [" + (f.offset + f.width - 1) + ":" + f.offset + "]" : "unused",
+      });
+      d.style.flex = run;
+      bar.append(d);
+      i -= run;
+    }
+    box.append(bar);
+    box.append(el("div", { className: "sub", textContent: "bit 31 ← → bit 0" }));
+    if (r.fields.length) {
+      box.append(table(["field", "bits", "width", "description"],
+        r.fields.slice().reverse().map((f) => [
+          f.name,
+          "[" + (f.offset + f.width - 1) + ":" + f.offset + "]",
+          String(f.width),
+          el("span", { className: "doc", textContent: f.doc || "—" }),
+        ])));
+    }
+  }
+  showReg(S.co_registers[0].name);
+
+  put("t-co", table(["address", "register", "origin", "half", "fields"],
+    S.co_registers.map((r) => [
+      hex(r.address, 3), r.name,
+      '<span class="tag ' + (r.origin === "application" ? "app" : "boot") + '">' + r.origin + "</span>",
+      r.half, String(r.fields.length),
+    ])));
+
+  /* ================= L2 ================= */
+  const modes = S.chip_modes.map((m) => m.name);
+  put("t-l2", table(["REQ_ID", "request", ...modes, "why"],
+    S.l2_requests.map((r) => [
+      hex(r.id), r.name,
+      ...modes.map((m) => r.modes.includes(m)
+        ? '<span class="tag ' + (m === "START_UP" ? "boot" : "app") + '">served</span>'
+        : '<span class="tag no">unknown_req</span>'),
+      el("span", { className: "doc", textContent: r.reason || "—" }),
+    ])));
+
+  const oidBox = $("t-oid");
+  Object.keys(S.get_info_objects).sort().forEach((mode) => {
+    oidBox.append(el("div", { className: "sub", textContent: mode }));
+    oidBox.append(table(["OBJECT_ID", "name", "provider", "serves"],
+      S.get_info_objects[mode].map((o) => [
+        hex(o.value), o.name, el("code", { textContent: o.provider }),
+        el("span", { className: "doc", textContent: o.doc || "—" }),
+      ])));
+  });
+
+  /* ================= WIRE ================= */
+  function decode(hexstr, layout) {
+    const b = [];
+    for (let i = 0; i < hexstr.length; i += 2) b.push(parseInt(hexstr.substr(i, 2), 16));
+    if (b.length < 4) return { bytes: b, fields: [] };
+    const len = b[1];
+    return {
+      bytes: b,
+      fields: [
+        { n: layout[0], v: hex(b[0]), cls: "status" },
+        { n: layout[1], v: String(len) },
+        { n: "DATA", v: b.slice(2, 2 + len).map((x) => x.toString(16).padStart(2, "0")).join(" ") || "—", cls: "data" },
+        { n: "CRC16", v: b.slice(-2).map((x) => x.toString(16).padStart(2, "0")).join("") },
+      ],
+      ok: b.length === len + 4,
+      data: b.slice(2, 2 + len),
+    };
+  }
+  function printable(bytes) {
+    let out = "", run = "";
+    bytes.forEach((x) => {
+      if (x >= 32 && x < 127) run += String.fromCharCode(x);
+      else { if (run.length >= 4) out += (out ? "  " : "") + JSON.stringify(run); run = ""; }
+    });
+    if (run.length >= 4) out += (out ? "  " : "") + JSON.stringify(run);
+    return out;
+  }
+  const wireBox = $("wire");
+  S.wire_traces.forEach((t) => {
+    const p = el("div", { className: "panel" });
+    p.append(el("div", {}, [
+      el("strong", { textContent: t.label }),
+      el("span", { className: "sub", textContent: "   " + t.mode + " mode · " + t.request_class }),
+    ]));
+    [["→", t.request, ["REQ_ID", "REQ_LEN"]], ["←", t.response, ["STATUS", "RSP_LEN"]]]
+      .forEach(([arrow, raw, layout]) => {
+        const d = decode(raw, layout);
+        const row = el("div", { className: "frame" });
+        row.append(el("span", { className: "dir", textContent: arrow }));
+        d.fields.forEach((f) => {
+          const n = el("span", { className: "fld " + (f.cls || "") });
+          n.append(el("span", { className: "n", textContent: f.n }));
+          n.append(document.createTextNode(f.v.length > 78 ? f.v.slice(0, 78) + " …" : f.v));
+          row.append(n);
+        });
+        p.append(row);
+        const asc = printable(d.data || []);
+        if (asc) p.append(el("div", { className: "sub" }, [
+          document.createTextNode("   ascii in payload: "),
+          el("span", { className: "ascii", textContent: asc }),
+        ]));
+        if (!d.ok) p.append(el("div", { className: "sub", textContent: "   length mismatch" }));
+      });
+    p.append(el("div", { className: "sub", textContent: "CHIP_STATUS after: " + hex(t.chip_status) }));
+    wireBox.append(p);
+  });
+
+  /* ================= FW BANKS ================= */
+  const F = S.fw_banks;
+  const fh = $("fwhdr");
+  fh.append(el("div", { className: "sub", textContent:
+    "struct " + F.struct_format + " — " + F.total_from_struct + " bytes, declared " +
+    F.header_size + (F.total_from_struct === F.header_size ? " ✓ agree" : " ✗ DISAGREE") }));
+  fh.append(table(["offset", "size", "field", "description"],
+    F.fields.map((f) => [
+      String(f.offset), String(f.size) + " B", f.name,
+      el("span", { className: "doc", textContent: f.doc || "—" }),
+    ])));
+  put("t-banks", table(["BANK_ID", "name", "populated by default", "description"],
+    F.bank_ids.map((b) => [
+      hex(b.value), b.name,
+      F.default_populated.includes(b.value)
+        ? '<span class="tag app">yes</span>'
+        : '<span class="tag no">empty</span>',
+      el("span", { className: "doc", textContent: b.doc || "—" }),
+    ])));
+
+  /* ================= ABOUT ================= */
+  $("about").innerHTML =
+    "<p class='note'>Nothing on this page is typed by hand. " +
+    "<code>tools/generate_spec.py</code> produces <code>model_spec.js</code> in one of " +
+    "exactly two ways, and the page only renders it.</p>" +
+    "<p class='note'><b>Introspection.</b> Registers, fields, offsets, widths, request " +
+    "ids, gating tables and the FW header layout are read off the live objects — " +
+    "<code>ConfigurationObjectImpl</code>, <code>L2Enum</code>, " +
+    "<code>L2_REQUEST_MODES</code>, <code>_HEADER_STRUCT</code>. Field descriptions come " +
+    "from the source via <code>ast</code>, because Python discards the string literals " +
+    "that document attributes.</p>" +
+    "<p class='note'><b>Execution.</b> The boot table is not a description of " +
+    "<code>_boot()</code>; it is the record of what <code>_boot()</code> did for every " +
+    "combination of inputs. The wire traces are bytes the model really emitted. So the " +
+    "page has no second implementation that could disagree with the first.</p>" +
+    "<p class='note'><b>Enforcement.</b> CI runs the generator with <code>--check</code>. " +
+    "If the model changed and this file was not regenerated, the build fails. That is the " +
+    "only thing standing between a visualiser and a lie, so it is a required check rather " +
+    "than a convention.</p>" +
+    "<p class='note'>Generated-file fingerprints at capture time: " +
+    Object.entries(P.generated_file_hashes || {})
+      .map(([k, v]) => "<code>" + k.split("/").pop() + "</code> " + v).join(" · ") +
+    "</p>";
+
+  $("foot").innerHTML =
+    "ts-tvl " + esc(P.ts_tvl_describe) + " · spec v" + P.spec_version +
+    " · regenerate with <code>tools/generate_spec.py</code>";
+})();
+</script>
+</body>
+</html>
