@@ -269,6 +269,25 @@ dom.window.addEventListener("load", () => {
     r.click();
   }
 
+  // Multi-byte hex must never be rendered unspaced: "2b92" reads as the value
+  // 0x2b92, but those are the wire bytes of 0x922B. The CRC was the one place
+  // this survived.
+  const chipId = spec.exchanges.find(
+    (e) => e.decoded && e.decoded.kind === "chip_id");
+  if (chipId) {
+    const sel2 = d.getElementById("try-pick");
+    sel2.value = chipId.group + " · " + chipId.label;
+    sel2.dispatchEvent(new dom.window.Event("change"));
+    const crcField = [...d.querySelectorAll("#try-main .fld")]
+      .find((f) => f.querySelector(".n").textContent === "CRC16");
+    check("CRC is rendered as spaced bytes", /^[0-9a-f]{2} [0-9a-f]{2}/.test(
+      crcField.textContent.replace("CRC16", "").trim()), true);
+    check("CRC also shows its value", /= 0x[0-9A-F]{4}/.test(crcField.textContent), true);
+  }
+  // and the CO tab must name the one big-endian thing in the codebase
+  check("CO tab names its big-endian storage",
+    /big-endian/.test(d.getElementById("tab-co").textContent), true);
+
   // decoded payloads in Try it
   const decodable = spec.exchanges.filter((e) => e.decoded).length;
   atLeast("decodable exchanges", decodable, 1);

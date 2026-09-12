@@ -212,6 +212,13 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
     firmware reads that latch through shared memory, never memory itself.
     Click a register.
   </p>
+  <p class="note">
+    Bit positions below are within the 32-bit register value, which is
+    endianness-independent. The <em>stored bytes</em> are not: unlike everything
+    on the L2 wire, <code>configuration_object.py</code> serialises CO registers
+    <b>big-endian</b> (<code>ENDIANESS = "big"</code>). That only matters if you
+    assemble a register from bytes by hand — which is exactly when it bites.
+  </p>
   <div class="panel">
     <div class="map" id="map"></div>
     <div class="legend">
@@ -1020,7 +1027,11 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
         { n: layout[0], v: hex(b[0]), cls: "status" },
         { n: layout[1], v: String(len) },
         { n: "DATA", v: b.slice(2, 2 + len).map((x) => x.toString(16).padStart(2, "0")).join(" ") || "—", cls: "data" },
-        { n: "CRC16", v: b.slice(-2).map((x) => x.toString(16).padStart(2, "0")).join("") },
+        // Spaced, and with the value beside it. Unspaced it read as
+        // "0x2b92" - but those are the wire bytes of the value 0x922B, and
+        // conflating the two is the whole little-endian trap.
+        { n: "CRC16", v: b.slice(-2).map((x) => x.toString(16).padStart(2, "0")).join(" ")
+             + "  = " + hex(b[b.length - 2] | (b[b.length - 1] << 8), 4) },
       ],
       ok: b.length === len + 4,
       data: b.slice(2, 2 + len),

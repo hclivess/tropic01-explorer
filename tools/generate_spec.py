@@ -606,7 +606,12 @@ def decode_payload(object_id: Optional[int], payload: bytes) -> Optional[Dict[st
             if field["name"] == "version" and len(chunk) == 4:
                 entry["decoded"] = decode_fw_version(chunk)["version"]
             elif field["size"] <= 4:
-                entry["decoded"] = str(int.from_bytes(chunk, "little"))
+                # The header struct is little-endian ("<HBB4sII32sI"), so say
+                # so on anything wider than a byte rather than leaving a bare
+                # number next to bytes in the opposite order.
+                entry["decoded"] = str(int.from_bytes(chunk, "little")) + (
+                    "  (little-endian)" if field["size"] > 1 else ""
+                )
             fields.append(entry)
         return {"kind": "fw_bank", "empty": False, "fields": fields}
 

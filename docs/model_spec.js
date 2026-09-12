@@ -1686,7 +1686,7 @@ window.MODEL_SPEC = {
     "empty": false,
     "fields": [
      {
-      "decoded": "1",
+      "decoded": "1  (little-endian)",
       "doc": "",
       "hex": "0100",
       "name": "type",
@@ -1714,14 +1714,14 @@ window.MODEL_SPEC = {
       "offset": 4
      },
      {
-      "decoded": "0",
+      "decoded": "0  (little-endian)",
       "doc": "",
       "hex": "00000000",
       "name": "size",
       "offset": 8
      },
      {
-      "decoded": "0",
+      "decoded": "0  (little-endian)",
       "doc": "",
       "hex": "00000000",
       "name": "git_hash",
@@ -1734,7 +1734,7 @@ window.MODEL_SPEC = {
       "offset": 16
      },
      {
-      "decoded": "0",
+      "decoded": "0  (little-endian)",
       "doc": "",
       "hex": "00000000",
       "name": "pair_version",
@@ -1782,7 +1782,7 @@ window.MODEL_SPEC = {
     "empty": false,
     "fields": [
      {
-      "decoded": "2",
+      "decoded": "2  (little-endian)",
       "doc": "",
       "hex": "0200",
       "name": "type",
@@ -1810,14 +1810,14 @@ window.MODEL_SPEC = {
       "offset": 4
      },
      {
-      "decoded": "0",
+      "decoded": "0  (little-endian)",
       "doc": "",
       "hex": "00000000",
       "name": "size",
       "offset": 8
      },
      {
-      "decoded": "0",
+      "decoded": "0  (little-endian)",
       "doc": "",
       "hex": "00000000",
       "name": "git_hash",
@@ -1830,7 +1830,7 @@ window.MODEL_SPEC = {
       "offset": 16
      },
      {
-      "decoded": "0",
+      "decoded": "0  (little-endian)",
       "doc": "",
       "hex": "00000000",
       "name": "pair_version",
