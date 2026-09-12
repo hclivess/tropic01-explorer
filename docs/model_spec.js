@@ -1549,12 +1549,14 @@ window.MODEL_SPEC = {
    "label": "X.509 certificate, block 0",
    "mode": "START_UP",
    "mode_after": "START_UP",
+   "object_id": 0,
    "params": {
     "BLOCK_INDEX": 0,
     "OBJECT_ID": "X509_CERTIFICATE"
    },
    "request": "010200002814",
    "request_class": "TsL2GetInfoRequest",
+   "request_id": 1,
    "response": "0180783530395f636572746966696361746500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000bc95",
    "status": 1
   },
@@ -1569,12 +1571,14 @@ window.MODEL_SPEC = {
    "label": "X.509 certificate, block 29 (last)",
    "mode": "START_UP",
    "mode_after": "START_UP",
+   "object_id": 0,
    "params": {
     "BLOCK_INDEX": 29,
     "OBJECT_ID": "X509_CERTIFICATE"
    },
    "request": "0102001d6614",
    "request_class": "TsL2GetInfoRequest",
+   "request_id": 1,
    "response": "01800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004e",
    "status": 1
   },
@@ -1585,12 +1589,14 @@ window.MODEL_SPEC = {
    "label": "X.509 certificate, block 30 (out of range)",
    "mode": "START_UP",
    "mode_after": "START_UP",
+   "object_id": 0,
    "params": {
     "BLOCK_INDEX": 30,
     "OBJECT_ID": "X509_CERTIFICATE"
    },
    "request": "0102001e6c14",
    "request_class": "TsL2GetInfoRequest",
+   "request_id": 1,
    "response": "7f000602",
    "status": 127
   },
@@ -1610,11 +1616,13 @@ window.MODEL_SPEC = {
    "label": "chip ID",
    "mode": "START_UP",
    "mode_after": "START_UP",
+   "object_id": 1,
    "params": {
     "OBJECT_ID": "CHIP_ID"
    },
    "request": "010201002b92",
    "request_class": "TsL2GetInfoRequest",
+   "request_id": 1,
    "response": "0180636869705f6964000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005855",
    "status": 1
   },
@@ -1635,11 +1643,13 @@ window.MODEL_SPEC = {
    "label": "RISC-V FW version",
    "mode": "START_UP",
    "mode_after": "START_UP",
+   "object_id": 2,
    "params": {
     "OBJECT_ID": "RISCV_FW_VERSION"
    },
    "request": "010202002b98",
    "request_class": "TsL2GetInfoRequest",
+   "request_id": 1,
    "response": "010400010082fbfa",
    "status": 1
   },
@@ -1660,11 +1670,13 @@ window.MODEL_SPEC = {
    "label": "SPECT FW version",
    "mode": "START_UP",
    "mode_after": "START_UP",
+   "object_id": 4,
    "params": {
     "OBJECT_ID": "SPECT_FW_VERSION"
    },
    "request": "010204002b8c",
    "request_class": "TsL2GetInfoRequest",
+   "request_id": 1,
    "response": "010400000080e3fa",
    "status": 1
   },
@@ -1735,12 +1747,14 @@ window.MODEL_SPEC = {
    "label": "FW bank FW1",
    "mode": "START_UP",
    "mode_after": "START_UP",
+   "object_id": 176,
    "params": {
     "BANK_ID": "FW1",
     "OBJECT_ID": "FW_BANK"
    },
    "request": "0102b00124b4",
    "request_class": "TsL2GetInfoRequest",
+   "request_id": 1,
    "response": "013401000001000000020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f6fe",
    "status": 1
   },
@@ -1751,12 +1765,14 @@ window.MODEL_SPEC = {
    "label": "FW bank FW2",
    "mode": "START_UP",
    "mode_after": "START_UP",
+   "object_id": 176,
    "params": {
     "BANK_ID": "FW2",
     "OBJECT_ID": "FW_BANK"
    },
    "request": "0102b0022eb4",
    "request_class": "TsL2GetInfoRequest",
+   "request_id": 1,
    "response": "01000386",
    "status": 1
   },
@@ -1827,12 +1843,14 @@ window.MODEL_SPEC = {
    "label": "FW bank SPECT1",
    "mode": "START_UP",
    "mode_after": "START_UP",
+   "object_id": 176,
    "params": {
     "BANK_ID": "SPECT1",
     "OBJECT_ID": "FW_BANK"
    },
    "request": "0102b0114734",
    "request_class": "TsL2GetInfoRequest",
+   "request_id": 1,
    "response": "01340200000100000201000000000000000000000000000000000000000000000000000000000000000000000000000000000000000041ca",
    "status": 1
   },
@@ -1843,12 +1861,14 @@ window.MODEL_SPEC = {
    "label": "FW bank SPECT2",
    "mode": "START_UP",
    "mode_after": "START_UP",
+   "object_id": 176,
    "params": {
     "BANK_ID": "SPECT2",
     "OBJECT_ID": "FW_BANK"
    },
    "request": "0102b0124d34",
    "request_class": "TsL2GetInfoRequest",
+   "request_id": 1,
    "response": "01000386",
    "status": 1
   },
@@ -1859,11 +1879,13 @@ window.MODEL_SPEC = {
    "label": "unknown OBJECT_ID 0x55",
    "mode": "START_UP",
    "mode_after": "START_UP",
+   "object_id": 85,
    "params": {
     "OBJECT_ID": "0x55"
    },
    "request": "010255002d6a",
    "request_class": "TsL2GetInfoRequest",
+   "request_id": 1,
    "response": "7f000602",
    "status": 127
   },
@@ -1874,11 +1896,13 @@ window.MODEL_SPEC = {
    "label": "pairing key slot 0 (written)",
    "mode": "START_UP",
    "mode_after": "START_UP",
+   "object_id": null,
    "params": {
     "PKEY_INDEX": 0
    },
    "request": "02214dba7a327f79efb96cc121237057c1398cac8068836c06209f5f45a9cffc946e002641",
    "request_class": "TsL2HandshakeRequest",
+   "request_id": 2,
    "response": "7e000584",
    "status": 126
   },
@@ -1889,11 +1913,30 @@ window.MODEL_SPEC = {
    "label": "pairing key slot 3 (blank)",
    "mode": "START_UP",
    "mode_after": "START_UP",
+   "object_id": null,
    "params": {
     "PKEY_INDEX": 3
    },
    "request": "02214dba7a327f79efb96cc121237057c1398cac8068836c06209f5f45a9cffc946e032c41",
    "request_class": "TsL2HandshakeRequest",
+   "request_id": 2,
+   "response": "7e000584",
+   "status": 126
+  },
+  {
+   "chip_status_after": 5,
+   "decoded": null,
+   "group": "Session",
+   "label": "Encrypted_Cmd_Req with no session",
+   "mode": "START_UP",
+   "mode_after": "START_UP",
+   "object_id": null,
+   "params": {
+    "L3_CHUNK": "8 bytes of nonsense"
+   },
+   "request": "040800010203040506079b86",
+   "request_class": "TsL2EncryptedCmdRequest",
+   "request_id": 4,
    "response": "7e000584",
    "status": 126
   },
@@ -1904,9 +1947,11 @@ window.MODEL_SPEC = {
    "label": "Encrypted_Session_Abt",
    "mode": "START_UP",
    "mode_after": "START_UP",
+   "object_id": null,
    "params": {},
    "request": "080003b0",
    "request_class": "TsL2EncryptedSessionAbtRequest",
+   "request_id": 8,
    "response": "7e000584",
    "status": 126
   },
@@ -1917,9 +1962,11 @@ window.MODEL_SPEC = {
    "label": "Resend_Req",
    "mode": "START_UP",
    "mode_after": "START_UP",
+   "object_id": null,
    "params": {},
    "request": "100003e0",
    "request_class": "TsL2ResendRequest",
+   "request_id": 16,
    "response": "7f000602",
    "status": 127
   },
@@ -1930,9 +1977,11 @@ window.MODEL_SPEC = {
    "label": "Get_Log_Req",
    "mode": "START_UP",
    "mode_after": "START_UP",
+   "object_id": null,
    "params": {},
    "request": "a200094c",
    "request_class": "TsL2GetLogRequest",
+   "request_id": 162,
    "response": "01000386",
    "status": 1
   },
@@ -1943,11 +1992,13 @@ window.MODEL_SPEC = {
    "label": "SLEEP_MODE",
    "mode": "START_UP",
    "mode_after": "START_UP",
+   "object_id": null,
    "params": {
     "SLEEP_KIND": "SLEEP_MODE"
    },
    "request": "2001059e04",
    "request_class": "TsL2SleepRequest",
+   "request_id": 32,
    "response": "7e000584",
    "status": 126
   },
@@ -1958,11 +2009,13 @@ window.MODEL_SPEC = {
    "label": "invalid kind 0x77",
    "mode": "START_UP",
    "mode_after": "START_UP",
+   "object_id": null,
    "params": {
     "SLEEP_KIND": "0x77"
    },
    "request": "200177b205",
    "request_class": "TsL2SleepRequest",
+   "request_id": 32,
    "response": "7e000584",
    "status": 126
   },
@@ -1973,11 +2026,13 @@ window.MODEL_SPEC = {
    "label": "REBOOT",
    "mode": "START_UP",
    "mode_after": "APPLICATION",
+   "object_id": null,
    "params": {
     "STARTUP_ID": "REBOOT"
    },
    "request": "b30101f98f",
    "request_class": "TsL2StartupRequest",
+   "request_id": 179,
    "response": "01000386",
    "status": 1
   },
@@ -1988,11 +2043,13 @@ window.MODEL_SPEC = {
    "label": "MAINTENANCE_REBOOT",
    "mode": "START_UP",
    "mode_after": "START_UP",
+   "object_id": null,
    "params": {
     "STARTUP_ID": "MAINTENANCE_REBOOT"
    },
    "request": "b30103f60f",
    "request_class": "TsL2StartupRequest",
+   "request_id": 179,
    "response": "01000386",
    "status": 1
   },
@@ -2003,11 +2060,13 @@ window.MODEL_SPEC = {
    "label": "invalid id 0x99",
    "mode": "START_UP",
    "mode_after": "START_UP",
+   "object_id": null,
    "params": {
     "STARTUP_ID": "0x99"
    },
    "request": "b30199aa0c",
    "request_class": "TsL2StartupRequest",
+   "request_id": 179,
    "response": "7f000602",
    "status": 127
   },
@@ -2022,12 +2081,14 @@ window.MODEL_SPEC = {
    "label": "X.509 certificate, block 0",
    "mode": "APPLICATION",
    "mode_after": "APPLICATION",
+   "object_id": 0,
    "params": {
     "BLOCK_INDEX": 0,
     "OBJECT_ID": "X509_CERTIFICATE"
    },
    "request": "010200002814",
    "request_class": "TsL2GetInfoRequest",
+   "request_id": 1,
    "response": "0180783530395f636572746966696361746500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000bc95",
    "status": 1
   },
@@ -2042,12 +2103,14 @@ window.MODEL_SPEC = {
    "label": "X.509 certificate, block 29 (last)",
    "mode": "APPLICATION",
    "mode_after": "APPLICATION",
+   "object_id": 0,
    "params": {
     "BLOCK_INDEX": 29,
     "OBJECT_ID": "X509_CERTIFICATE"
    },
    "request": "0102001d6614",
    "request_class": "TsL2GetInfoRequest",
+   "request_id": 1,
    "response": "01800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004e",
    "status": 1
   },
@@ -2058,12 +2121,14 @@ window.MODEL_SPEC = {
    "label": "X.509 certificate, block 30 (out of range)",
    "mode": "APPLICATION",
    "mode_after": "APPLICATION",
+   "object_id": 0,
    "params": {
     "BLOCK_INDEX": 30,
     "OBJECT_ID": "X509_CERTIFICATE"
    },
    "request": "0102001e6c14",
    "request_class": "TsL2GetInfoRequest",
+   "request_id": 1,
    "response": "7f000602",
    "status": 127
   },
@@ -2083,11 +2148,13 @@ window.MODEL_SPEC = {
    "label": "chip ID",
    "mode": "APPLICATION",
    "mode_after": "APPLICATION",
+   "object_id": 1,
    "params": {
     "OBJECT_ID": "CHIP_ID"
    },
    "request": "010201002b92",
    "request_class": "TsL2GetInfoRequest",
+   "request_id": 1,
    "response": "0180636869705f6964000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005855",
    "status": 1
   },
@@ -2108,11 +2175,13 @@ window.MODEL_SPEC = {
    "label": "RISC-V FW version",
    "mode": "APPLICATION",
    "mode_after": "APPLICATION",
+   "object_id": 2,
    "params": {
     "OBJECT_ID": "RISCV_FW_VERSION"
    },
    "request": "010202002b98",
    "request_class": "TsL2GetInfoRequest",
+   "request_id": 1,
    "response": "010400000002eff9",
    "status": 1
   },
@@ -2133,11 +2202,13 @@ window.MODEL_SPEC = {
    "label": "SPECT FW version",
    "mode": "APPLICATION",
    "mode_after": "APPLICATION",
+   "object_id": 4,
    "params": {
     "OBJECT_ID": "SPECT_FW_VERSION"
    },
    "request": "010204002b8c",
    "request_class": "TsL2GetInfoRequest",
+   "request_id": 1,
    "response": "010400000201e675",
    "status": 1
   },
@@ -2148,12 +2219,14 @@ window.MODEL_SPEC = {
    "label": "FW bank FW1",
    "mode": "APPLICATION",
    "mode_after": "APPLICATION",
+   "object_id": 176,
    "params": {
     "BANK_ID": "FW1",
     "OBJECT_ID": "FW_BANK"
    },
    "request": "0102b00124b4",
    "request_class": "TsL2GetInfoRequest",
+   "request_id": 1,
    "response": "7f000602",
    "status": 127
   },
@@ -2164,12 +2237,14 @@ window.MODEL_SPEC = {
    "label": "FW bank FW2",
    "mode": "APPLICATION",
    "mode_after": "APPLICATION",
+   "object_id": 176,
    "params": {
     "BANK_ID": "FW2",
     "OBJECT_ID": "FW_BANK"
    },
    "request": "0102b0022eb4",
    "request_class": "TsL2GetInfoRequest",
+   "request_id": 1,
    "response": "7f000602",
    "status": 127
   },
@@ -2180,12 +2255,14 @@ window.MODEL_SPEC = {
    "label": "FW bank SPECT1",
    "mode": "APPLICATION",
    "mode_after": "APPLICATION",
+   "object_id": 176,
    "params": {
     "BANK_ID": "SPECT1",
     "OBJECT_ID": "FW_BANK"
    },
    "request": "0102b0114734",
    "request_class": "TsL2GetInfoRequest",
+   "request_id": 1,
    "response": "7f000602",
    "status": 127
   },
@@ -2196,12 +2273,14 @@ window.MODEL_SPEC = {
    "label": "FW bank SPECT2",
    "mode": "APPLICATION",
    "mode_after": "APPLICATION",
+   "object_id": 176,
    "params": {
     "BANK_ID": "SPECT2",
     "OBJECT_ID": "FW_BANK"
    },
    "request": "0102b0124d34",
    "request_class": "TsL2GetInfoRequest",
+   "request_id": 1,
    "response": "7f000602",
    "status": 127
   },
@@ -2212,11 +2291,13 @@ window.MODEL_SPEC = {
    "label": "unknown OBJECT_ID 0x55",
    "mode": "APPLICATION",
    "mode_after": "APPLICATION",
+   "object_id": 85,
    "params": {
     "OBJECT_ID": "0x55"
    },
    "request": "010255002d6a",
    "request_class": "TsL2GetInfoRequest",
+   "request_id": 1,
    "response": "7f000602",
    "status": 127
   },
@@ -2227,11 +2308,13 @@ window.MODEL_SPEC = {
    "label": "pairing key slot 0 (written)",
    "mode": "APPLICATION",
    "mode_after": "APPLICATION",
+   "object_id": null,
    "params": {
     "PKEY_INDEX": 0
    },
    "request": "02214dba7a327f79efb96cc121237057c1398cac8068836c06209f5f45a9cffc946e002641",
    "request_class": "TsL2HandshakeRequest",
+   "request_id": 2,
    "response": "01304dba7a327f79efb96cc121237057c1398cac8068836c06209f5f45a9cffc946e8a34cb51af100ee7368807b211dd10c05c54",
    "status": 1
   },
@@ -2242,13 +2325,32 @@ window.MODEL_SPEC = {
    "label": "pairing key slot 3 (blank)",
    "mode": "APPLICATION",
    "mode_after": "APPLICATION",
+   "object_id": null,
    "params": {
     "PKEY_INDEX": 3
    },
    "request": "02214dba7a327f79efb96cc121237057c1398cac8068836c06209f5f45a9cffc946e032c41",
    "request_class": "TsL2HandshakeRequest",
+   "request_id": 2,
    "response": "79000616",
    "status": 121
+  },
+  {
+   "chip_status_after": 1,
+   "decoded": null,
+   "group": "Session",
+   "label": "Encrypted_Cmd_Req with no session",
+   "mode": "APPLICATION",
+   "mode_after": "APPLICATION",
+   "object_id": null,
+   "params": {
+    "L3_CHUNK": "8 bytes of nonsense"
+   },
+   "request": "040800010203040506079b86",
+   "request_class": "TsL2EncryptedCmdRequest",
+   "request_id": 4,
+   "response": "7a00061c",
+   "status": 122
   },
   {
    "chip_status_after": 1,
@@ -2257,9 +2359,11 @@ window.MODEL_SPEC = {
    "label": "Encrypted_Session_Abt",
    "mode": "APPLICATION",
    "mode_after": "APPLICATION",
+   "object_id": null,
    "params": {},
    "request": "080003b0",
    "request_class": "TsL2EncryptedSessionAbtRequest",
+   "request_id": 8,
    "response": "01000386",
    "status": 1
   },
@@ -2270,9 +2374,11 @@ window.MODEL_SPEC = {
    "label": "Resend_Req",
    "mode": "APPLICATION",
    "mode_after": "APPLICATION",
+   "object_id": null,
    "params": {},
    "request": "100003e0",
    "request_class": "TsL2ResendRequest",
+   "request_id": 16,
    "response": "7f000602",
    "status": 127
   },
@@ -2283,9 +2389,11 @@ window.MODEL_SPEC = {
    "label": "Get_Log_Req",
    "mode": "APPLICATION",
    "mode_after": "APPLICATION",
+   "object_id": null,
    "params": {},
    "request": "a200094c",
    "request_class": "TsL2GetLogRequest",
+   "request_id": 162,
    "response": "01000386",
    "status": 1
   },
@@ -2296,11 +2404,13 @@ window.MODEL_SPEC = {
    "label": "SLEEP_MODE",
    "mode": "APPLICATION",
    "mode_after": "APPLICATION",
+   "object_id": null,
    "params": {
     "SLEEP_KIND": "SLEEP_MODE"
    },
    "request": "2001059e04",
    "request_class": "TsL2SleepRequest",
+   "request_id": 32,
    "response": "01000386",
    "status": 1
   },
@@ -2311,11 +2421,13 @@ window.MODEL_SPEC = {
    "label": "invalid kind 0x77",
    "mode": "APPLICATION",
    "mode_after": "APPLICATION",
+   "object_id": null,
    "params": {
     "SLEEP_KIND": "0x77"
    },
    "request": "200177b205",
    "request_class": "TsL2SleepRequest",
+   "request_id": 32,
    "response": "7f000602",
    "status": 127
   },
@@ -2326,11 +2438,13 @@ window.MODEL_SPEC = {
    "label": "REBOOT",
    "mode": "APPLICATION",
    "mode_after": "APPLICATION",
+   "object_id": null,
    "params": {
     "STARTUP_ID": "REBOOT"
    },
    "request": "b30101f98f",
    "request_class": "TsL2StartupRequest",
+   "request_id": 179,
    "response": "01000386",
    "status": 1
   },
@@ -2341,11 +2455,13 @@ window.MODEL_SPEC = {
    "label": "MAINTENANCE_REBOOT",
    "mode": "APPLICATION",
    "mode_after": "START_UP",
+   "object_id": null,
    "params": {
     "STARTUP_ID": "MAINTENANCE_REBOOT"
    },
    "request": "b30103f60f",
    "request_class": "TsL2StartupRequest",
+   "request_id": 179,
    "response": "01000386",
    "status": 1
   },
@@ -2356,11 +2472,13 @@ window.MODEL_SPEC = {
    "label": "invalid id 0x99",
    "mode": "APPLICATION",
    "mode_after": "APPLICATION",
+   "object_id": null,
    "params": {
     "STARTUP_ID": "0x99"
    },
    "request": "b30199aa0c",
    "request_class": "TsL2StartupRequest",
+   "request_id": 179,
    "response": "7f000602",
    "status": 127
   }
@@ -2690,8 +2808,8 @@ window.MODEL_SPEC = {
   },
   "spec_version": 1,
   "ts_tvl_branch": "feat/startup-mode",
-  "ts_tvl_commit": "ae0daec",
-  "ts_tvl_describe": "2.3-70-gae0daec"
+  "ts_tvl_commit": "2f1d118",
+  "ts_tvl_describe": "2.3-71-g2f1d118"
  },
  "wire_traces": [
   {

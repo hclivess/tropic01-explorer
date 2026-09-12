@@ -146,6 +146,11 @@ tr.pick { cursor: pointer; }
 tr.pick:hover td { background: #1b222b; }
 tr.open td { background: #1b222b; }
 .decoded { border-left: 2px solid var(--accent); padding: 6px 0 6px 11px; margin: 8px 0; }
+.linkish {
+  font: inherit; font-size: inherit; color: var(--wire); background: none;
+  border: 0; border-bottom: 1px dotted var(--wire); padding: 0; cursor: pointer;
+}
+.linkish:hover { color: var(--ink); border-bottom-color: var(--ink); }
 footer { margin-top: 34px; padding-top: 14px; border-top: 1px solid var(--edge); color: var(--faint); font-size: 11.5px; }
 code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12px; }
 </style>
@@ -258,6 +263,19 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
         <label>Request</label>
         <select id="try-pick"></select>
       </div>
+    </div>
+  </div>
+  <div class="panel" id="live-hint" hidden>
+    <div class="sub">
+      These are captured bytes. To send them to a model running right now — and
+      to power it on and off — start the bridge and reload:
+    </div>
+    <div class="out" style="margin-top:8px">python3 -m venv .venv &amp;&amp; .venv/bin/pip install -e /path/to/ts-tvl
+PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div>
+    <div class="sub" style="margin-top:8px">
+      That works from this page too, not only from
+      <code>http://127.0.0.1:8800</code>: the bridge permits this origin, and
+      browsers exempt loopback from mixed-content blocking.
     </div>
   </div>
   <div class="panel" id="live-panel" hidden>
@@ -648,7 +666,8 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
   const modes = S.chip_modes.map((m) => m.name);
   put("t-l2", table(["REQ_ID", "request", ...modes, "why"],
     S.l2_requests.map((r) => [
-      hex(r.id), r.name,
+      hex(r.id),
+      tryLink(r.name, (e) => e.request_id === r.id),
       ...modes.map((m) => r.modes.includes(m)
         ? tag(m === "START_UP" ? "boot" : "app", "served")
         : tag("no", "unknown_req")),
@@ -660,7 +679,9 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
     oidBox.append(el("div", { className: "sub", textContent: mode }));
     oidBox.append(table(["OBJECT_ID", "name", "provider", "serves"],
       S.get_info_objects[mode].map((o) => [
-        hex(o.value), o.name, el("code", { textContent: o.provider }),
+        hex(o.value),
+        tryLink(o.name, (e) => e.object_id === o.value, mode),
+        el("code", { textContent: o.provider }),
         el("span", { className: "doc", textContent: o.doc || "—" }),
       ])));
   });
@@ -824,13 +845,20 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
   // So the page plays back captured bytes - unless tools/serve.py is serving
   // it, in which case a real model is one fetch away. Everything below is
   // additive; with no API the page behaves exactly as it does on Pages.
-  const live = { on: false, mode: null };
+  const live = { on: false, mode: null, base: null };
+
+  // Two places a bridge can be. Relative first: the page is being served by
+  // tools/serve.py. Then loopback: the page came from GitHub Pages but a bridge
+  // is running on this machine - browsers exempt 127.0.0.1 from mixed-content
+  // blocking, so an https page may reach it, provided the bridge allows the
+  // origin. It does, by default, for exactly this.
+  const BRIDGES = ["api/", "http://127.0.0.1:8800/api/"];
 
   // `method` is explicit rather than inferred from whether a body was passed:
   // inferring it turned the power buttons into silent GETs that 404'd, and the
   // only visible symptom was a button that did nothing.
   async function api(path, method, body) {
-    const response = await fetch("api/" + path, method === "POST"
+    const response = await fetch((live.base || BRIDGES[0]) + path, method === "POST"
       ? { method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body || {}) }
       : undefined);
@@ -898,11 +926,23 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
   }
 
   async function probeLive() {
-    try {
-      showLive(await api("health", "GET"));
-    } catch (e) {
-      return;  // static hosting, or file:// - the normal case
+    let health = null;
+    for (const base of BRIDGES) {
+      try {
+        live.base = base;
+        health = await api("health", "GET");
+        break;
+      } catch (e) {
+        live.base = null;
+      }
     }
+    if (!health) {
+      // No bridge - the normal case on Pages and on file://. Say how to get
+      // one rather than leaving the tab looking like this is all there is.
+      $("live-hint").hidden = false;
+      return;
+    }
+    showLive(health);
     $("live-send").onclick = async () => {
       const e = exchange(st.mode, tryState.key);
       if (!e) { renderLiveResult(null, "nothing captured to send for this mode"); return; }
@@ -926,6 +966,36 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
     };
     $("live-power-on").onclick = power(true);
     $("live-power-off").onclick = power(false);
+  }
+
+  // Jump to Try it showing the first exchange that satisfies `match`, in the
+  // mode it was captured in. This is what makes the tables navigable rather
+  // than merely readable: every row can say "show me this happening".
+  function showInTry(match, preferMode) {
+    const wanted = X.filter(match);
+    if (!wanted.length) return false;
+    const pick = wanted.find((e) => e.mode === (preferMode || st.mode)) || wanted[0];
+    st.mode = pick.mode;
+    tryState.key = keyOf(pick);
+    const select = $("try-pick");
+    if (select) select.value = tryState.key;
+    renderBoot();
+    renderTry();
+    [...nav.children][TABS.findIndex(([id]) => id === "try")].click();
+    // Not every environment implements scrollIntoView - jsdom does not - and an
+    // exception here would abort the rest of the handler on every click.
+    const section = document.getElementById("tab-try");
+    if (section && typeof section.scrollIntoView === "function") {
+      section.scrollIntoView({ block: "start" });
+    }
+    return true;
+  }
+
+  function tryLink(text, match, preferMode) {
+    const a = el("button", { className: "linkish", textContent: text });
+    a.onclick = () => showInTry(match, preferMode);
+    a.title = "show this in Try it";
+    return a;
   }
 
   /* ================= WIRE ================= */
@@ -1123,7 +1193,8 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
     ])));
   put("t-banks", table(["BANK_ID", "name", "populated by default", "description"],
     F.bank_ids.map((b) => [
-      hex(b.value), b.name,
+      hex(b.value),
+      tryLink(b.name, (e) => (e.params || {}).BANK_ID === b.name, "START_UP"),
       F.default_populated.includes(b.value) ? tag("app", "yes") : tag("no", "empty"),
       el("span", { className: "doc", textContent: b.doc || "—" }),
     ])));

@@ -260,6 +260,26 @@ dom.window.addEventListener("load", () => {
       true);
   }
 
+  // every table row that names a request must be able to show it happening
+  check("L2 rows link to an exchange",
+    n("#t-l2 .linkish"), spec.l2_requests.length);
+  check("Get_Info rows link to an exchange", n("#t-oid .linkish"),
+    Object.values(spec.get_info_objects).reduce((a, v) => a + v.length, 0));
+  check("FW bank rows link to an exchange",
+    n("#t-banks .linkish"), spec.fw_banks.bank_ids.length);
+  check("every L2 request has an exchange to link to",
+    spec.l2_requests.every((r) =>
+      spec.exchanges.some((e) => e.request_id === r.id)), true);
+
+  const handshake = [...d.querySelectorAll("#t-l2 .linkish")]
+    .find((b) => b.textContent === "HANDSHAKE");
+  if (handshake) {
+    handshake.click();
+    check("clicking a request opens Try it", d.getElementById("tab-try").hidden, false);
+    check("clicking a request selects its exchange",
+      /Handshake/.test(d.getElementById("try-pick").value), true);
+  }
+
   // the boot toggles go through the same shared helper
   const fwNo = [...d.querySelectorAll("#seg-fw button")].find((b) => b.textContent === "no");
   if (fwNo) {

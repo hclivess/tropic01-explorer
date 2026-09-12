@@ -36,6 +36,7 @@ import atexit
 import json
 import pathlib
 import shutil
+import signal
 import socket
 import subprocess
 import sys
@@ -78,6 +79,16 @@ class Chip:
             command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
         )
         atexit.register(self.stop)
+        # `atexit` does not run on SIGTERM, so a `kill` leaves model_server
+        # orphaned - holding its port, and its parent's pipes. This is exactly
+        # the defect recorded against model_runner.py in BACKLOG 1.2, and this
+        # script had it too until a stray `kill` left two servers running.
+        for sig in (signal.SIGTERM, signal.SIGHUP):
+            try:
+                previous = signal.getsignal(sig)
+                signal.signal(sig, partial(self._on_signal, previous))
+            except (ValueError, OSError):
+                pass  # not the main thread, or the platform lacks it
 
         # The server binds its socket only once the model is ready - deliberately,
         # since TR01SV-98 - so a connection refused here means "not yet", not
@@ -146,6 +157,14 @@ class Chip:
             else "APPLICATION",
         }
 
+    def _on_signal(self, previous: Any, signum: int, frame: Any) -> None:
+        self.stop()
+        if callable(previous) and previous not in (signal.SIG_IGN, signal.SIG_DFL):
+            previous(signum, frame)
+        else:
+            signal.signal(signum, signal.SIG_DFL)
+            signal.raise_signal(signum)
+
     def stop(self) -> None:
         for close in (getattr(self, "target", None), None):
             try:
@@ -168,12 +187,33 @@ class Handler(SimpleHTTPRequestHandler):
     def log_message(self, *args: Any) -> None:  # quieter than the default
         pass
 
+    #: Origins allowed to drive this bridge. Loopback is exempt from browsers'
+    #: mixed-content blocking - it counts as a trustworthy origin - so the
+    #: page served from GitHub Pages *can* reach a bridge running here, as long
+    #: as the bridge says it may. Narrow by default; --allow-origin widens it.
+    allow_origin: str = "https://hclivess.github.io"
+
+    def _cors(self) -> None:
+        origin = self.headers.get("Origin")
+        if origin and (self.allow_origin == "*" or origin == self.allow_origin):
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+
+    def do_OPTIONS(self) -> None:  # noqa: N802 - http.server's naming
+        self.send_response(204)
+        self._cors()
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
     def _json(self, payload: Dict[str, Any], status: int = 200) -> None:
         body = json.dumps(payload).encode()
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        self._cors()
         self.end_headers()
         self.wfile.write(body)
 
@@ -240,6 +280,10 @@ def main() -> int:
                         help="TCP port for model_server (default: a free one)")
     parser.add_argument("--config", type=pathlib.Path, default=None,
                         help="model configuration YAML")
+    parser.add_argument("--allow-origin", default=Handler.allow_origin,
+                        help="origin permitted to drive this bridge from a "
+                             "browser; '*' allows any. Defaults to the "
+                             "published page.")
     args = parser.parse_args()
 
     try:
@@ -258,11 +302,14 @@ def main() -> int:
     chip = Chip(model_port, args.config)
 
     Handler.chip = chip
+    Handler.allow_origin = args.allow_origin
     handler = partial(Handler, directory=str(DOCS))
     server = ThreadingHTTPServer(("127.0.0.1", args.port), handler)
     print(f"\n  http://127.0.0.1:{args.port}\n")
     print("  The page will detect the API and switch the Try-it tab from")
-    print("  replaying captured bytes to sending them to this model.\n")
+    print("  replaying captured bytes to sending them to this model.")
+    print(f"\n  The published page can drive it too - {args.allow_origin}")
+    print("  is permitted, and loopback is exempt from mixed-content blocking.\n")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

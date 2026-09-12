@@ -38,6 +38,7 @@ from typing import Any, Dict, List, Optional
 
 from tvl.api.l2_api import (
     L2Enum,
+    TsL2EncryptedCmdRequest,
     TsL2EncryptedSessionAbtRequest,
     TsL2GetInfoRequest,
     TsL2GetLogRequest,
@@ -688,6 +689,9 @@ def exchanges() -> List[Dict[str, Any]]:
             ("Handshake", "pairing key slot 3 (blank)", {"PKEY_INDEX": 3},
              TsL2HandshakeRequest(e_hpub=host.session.create_handshake_request(),
                                   pkey_index=3)),
+            ("Session", "Encrypted_Cmd_Req with no session",
+             {"L3_CHUNK": "8 bytes of nonsense"},
+             TsL2EncryptedCmdRequest(l3_chunk=bytes(range(8)))),
             ("Session", "Encrypted_Session_Abt", {},
              TsL2EncryptedSessionAbtRequest()),
             ("Transport", "Resend_Req", {}, TsL2ResendRequest()),
@@ -731,6 +735,11 @@ def exchanges() -> List[Dict[str, Any]]:
                     "label": label,
                     "request_class": type(request).__name__,
                     "params": params,
+                    # The REQ_ID is literally the first byte, so the link from
+                    # an L2_REQUEST_MODES row to an exchange is exact rather
+                    # than a name match.
+                    "request_id": raw_request[0],
+                    "object_id": int(object_id.value) if object_id is not None else None,
                     "request": raw_request.hex(),
                     "response": raw_response.hex(),
                     "status": raw_response[0] if raw_response else None,
