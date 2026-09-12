@@ -209,12 +209,25 @@ def l2_requests() -> List[Dict[str, Any]]:
     reasons = table_reasons(
         pathlib.Path(inspect.getfile(l2_impl)), "L2_REQUEST_MODES"
     )
+    # The reasons are scraped out of comments, which no parser can follow
+    # through an arbitrary reformat. Rather than make the regex cleverer, make
+    # its failure loud: every gated request has a documented reason today, so
+    # any request without one means the scrape broke, not that someone wrote an
+    # undocumented row. Silently shipping a table of "—" is the bad outcome.
+    missing = sorted(r.name for r in L2Enum if not reasons.get(r.name))
+    if missing:
+        raise SystemExit(
+            "no reason comment found for: " + ", ".join(missing) + ".\n"
+            "Either L2_REQUEST_MODES gained an undocumented entry, or it was "
+            "reformatted and table_reasons() can no longer follow it. Fix "
+            "whichever it is - do not ship the page with empty reasons."
+        )
     return [
         {
             "name": request_id.name,
             "id": int(request_id.value),
             "modes": sorted(m.name for m in l2_impl.L2_REQUEST_MODES[request_id]),
-            "reason": reasons.get(request_id.name, ""),
+            "reason": reasons[request_id.name],
         }
         for request_id in sorted(L2Enum, key=lambda e: e.value)
     ]

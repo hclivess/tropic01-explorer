@@ -312,6 +312,7 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
   const statusName = {}; S.l2_status_codes.forEach((s) => (statusName[s.value] = s.name));
 
   const st = {
+    stranded: false,
     maint: 1,
     fw: true,
     mode: S.chip_modes.some((m) => m.name === "APPLICATION") ? "APPLICATION" : S.chip_modes[0].name,
@@ -338,10 +339,24 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
     // A chip with no FW cannot sit in Application mode, so toggling the FW
     // switch can strand us somewhere the capture has no rows for. Move to a
     // state that was actually observed rather than offering dead buttons.
+    st.stranded = false;
     if (reachable(st.mode)) return;
     const alt = S.chip_modes.map((m) => m.name).find(reachable);
-    if (alt) { st.mode = alt; st.status = null; st.chip = null;
-      logLines.unshift("<b>settled</b> · no captured state for that combination · now <b>" + alt + "</b>"); }
+    if (alt) {
+      st.mode = alt; st.status = null; st.chip = null;
+      logLines.unshift("<b>settled</b> · no captured state for that combination · now <b>" + alt + "</b>");
+      return;
+    }
+    // Nothing at all was captured for this combination. Unreachable with
+    // today's model, but say so rather than leaving every button dead and no
+    // explanation - a UI that silently does nothing is the thing to avoid.
+    st.stranded = true;
+    st.status = null; st.chip = null;
+    logLines.unshift(
+      "<b>no captured data</b> · the model was never observed in any mode with " +
+      "MAINTENANCE_ENA=" + st.maint + " and FW " + (st.fw ? "present" : "absent") +
+      " · regenerate the spec, or this combination cannot occur"
+    );
   }
 
   function findRow(action) {
@@ -386,7 +401,11 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
 
     const isBoot = st.mode === "START_UP";
     const m = $("r-mode");
-    m.textContent = st.mode; m.className = "v " + (isBoot ? "boot" : "app");
+    if (st.stranded) {
+      m.textContent = "no captured data"; m.className = "v hot";
+    } else {
+      m.textContent = st.mode; m.className = "v " + (isBoot ? "boot" : "app");
+    }
     const stn = $("r-status");
     if (st.status === null || st.status === undefined) { stn.textContent = "—"; stn.className = "v"; }
     else {
