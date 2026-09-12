@@ -355,13 +355,24 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
     chip: null,
   };
 
-  function segment(node, opts, get, set) {
-    node.innerHTML = "";
-    opts.forEach(([label, value]) => {
-      const b = el("button", { textContent: label });
-      b.setAttribute("aria-pressed", String(get() === value));
-      b.onclick = () => { set(value); settle(); renderBoot(); };
-      node.append(b);
+  // Shared by the boot panel and the Try-it panel, so it must not decide what
+  // to re-render - it used to call renderBoot() unconditionally, which left the
+  // Try-it mode buttons updating state and redrawing the wrong panel.
+  function segment(node, opts, get, set, after) {
+    // Built once, then only the pressed state is updated. Rebuilding on every
+    // render also works, but it replaces the element under the pointer - which
+    // throws away keyboard focus on every toggle and detaches any reference
+    // held to the button that was just clicked.
+    if (node.children.length !== opts.length) {
+      node.innerHTML = "";
+      opts.forEach(([label, value]) => {
+        const b = el("button", { textContent: label });
+        b.onclick = () => { set(value); if (after) after(); };
+        node.append(b);
+      });
+    }
+    opts.forEach(([, value], i) => {
+      node.children[i].setAttribute("aria-pressed", String(get() === value));
     });
   }
 
@@ -418,20 +429,28 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
   }
 
   function renderBoot() {
+    const reboot = () => { settle(); renderBoot(); };
     segment($("seg-maint"), [["1 enabled", 1], ["0 disabled", 0]],
-      () => st.maint, (v) => { st.maint = v; });
+      () => st.maint, (v) => { st.maint = v; }, reboot);
     segment($("seg-fw"), [["yes", true], ["no", false]],
-      () => st.fw, (v) => { st.fw = v; });
+      () => st.fw, (v) => { st.fw = v; }, reboot);
 
-    const acts = $("acts"); acts.innerHTML = "";
+    // Same reasoning as segment(): build once, then only update state, so
+    // pressing an action does not yank focus out from under the keyboard.
+    const acts = $("acts");
     const actions = [...new Set(S.boot_transitions.map((r) => r.action))];
-    actions.forEach((a) => {
+    if (acts.children.length !== actions.length) {
+      acts.innerHTML = "";
+      actions.forEach((a) => {
+        const b = el("button", { textContent: a.replace(/_/g, " ").toLowerCase() });
+        b.onclick = () => act(a);
+        acts.append(b);
+      });
+    }
+    actions.forEach((a, i) => {
       const row = findRow(a);
-      const b = el("button", { textContent: a.replace(/_/g, " ").toLowerCase() });
-      b.disabled = !row;
-      b.title = row ? "" : "no captured row for this state";
-      b.onclick = () => act(a);
-      acts.append(b);
+      acts.children[i].disabled = !row;
+      acts.children[i].title = row ? "" : "no captured row for this state";
     });
 
     const isBoot = st.mode === "START_UP";
@@ -632,7 +651,7 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
 
   function renderTry() {
     segment($("try-mode"), S.chip_modes.map((m) => [m.name, m.name]),
-      () => tryState.mode, (v) => { tryState.mode = v; });
+      () => tryState.mode, (v) => { tryState.mode = v; }, renderTry);
 
     const pick = $("try-pick");
     if (!pick.options.length) {

@@ -156,9 +156,26 @@ dom.window.addEventListener("load", () => {
     const key = gated.group + " · " + gated.label;
     pick.value = key;
     pick.dispatchEvent(new dom.window.Event("change"));
-    const modeBtn = [...d.querySelectorAll("#try-mode button")]
-      .find((b) => b.textContent === gated.mode);
+    const modeBtns = [...d.querySelectorAll("#try-mode button")];
+    const modeBtn = modeBtns.find((b) => b.textContent === gated.mode);
     check("mode button for the gated case exists", !!modeBtn, true);
+
+    // Switching mode must actually redraw. Click the mode that is NOT already
+    // selected: clicking the selected one is a no-op that passes whatever the
+    // handler does, which is exactly how a broken selector shipped once.
+    const notSelected = modeBtns.find((b) => b.getAttribute("aria-pressed") !== "true");
+    if (notSelected) {
+      const paneBefore = d.getElementById("try-main").textContent;
+      const bootLogBefore = d.getElementById("log").textContent;
+      notSelected.click();
+      check("switching mode redraws the pane",
+        d.getElementById("try-main").textContent !== paneBefore, true);
+      check("switching mode marks the new button pressed",
+        notSelected.getAttribute("aria-pressed"), "true");
+      check("Try-it selector does not disturb the boot panel",
+        d.getElementById("log").textContent, bootLogBefore);
+    }
+
     if (modeBtn) {
       modeBtn.click();
       const shown = d.getElementById("try-main").textContent;
@@ -171,6 +188,15 @@ dom.window.addEventListener("load", () => {
           d.getElementById("try-other").textContent.includes(hex(other.status)), true);
       }
     }
+  }
+
+  // the boot toggles go through the same shared helper
+  const fwNo = [...d.querySelectorAll("#seg-fw button")].find((b) => b.textContent === "no");
+  if (fwNo) {
+    fwNo.click();
+    check("boot toggle marks itself pressed", fwNo.getAttribute("aria-pressed"), "true");
+    check("boot toggle redraws the action buttons",
+      d.querySelectorAll("#acts button").length > 0, true);
   }
 
   check("errors after interaction", errors.length, 0);
