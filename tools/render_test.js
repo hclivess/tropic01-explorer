@@ -46,6 +46,24 @@ dom.window.addEventListener("load", () => {
 
   console.log(`spec: ts-tvl ${spec.provenance.ts_tvl_describe}\n`);
 
+  // Every count assertion below compares the page against the spec, which is
+  // satisfied vacuously when the spec is empty: 0 rendered === 0 expected.
+  // Floor the spec first, so a capture that produced nothing fails here rather
+  // than passing green with a blank page.
+  const atLeast = (name, n, min) => {
+    const ok = n >= min;
+    console.log(`${ok ? "  ok  " : "  FAIL"}  spec has ${name}: ${n}${ok ? "" : ` (need >= ${min})`}`);
+    if (!ok) failures.push("spec " + name);
+  };
+  atLeast("chip modes", spec.chip_modes.length, 2);
+  atLeast("CO registers", spec.co_registers.length, 1);
+  atLeast("L2 requests", spec.l2_requests.length, 1);
+  atLeast("boot transitions", spec.boot_transitions.length, 1);
+  atLeast("wire traces", spec.wire_traces.length, 1);
+  atLeast("CHIP_STATUS flags", spec.chip_status_flags.length, 1);
+  atLeast("FW header fields", spec.fw_banks.fields.length, 1);
+  console.log();
+
   check("script errors", errors.length, 0);
   if (errors.length) errors.forEach((e) => console.log("        " + e));
 
@@ -67,6 +85,21 @@ dom.window.addEventListener("load", () => {
   const oidRows = Object.values(spec.get_info_objects).reduce((a, v) => a + v.length, 0);
   check("Get_Info object rows", n("#t-oid tbody tr"), oidRows);
   check("CHIP_STATUS bit chips", n("#r-bits .bit"), spec.chip_status_flags.length);
+
+  // cells must be real elements, not markup rendered as text
+  check("tag cells rendered as elements", n("#t-l2 .tag") > 0, true);
+  check("no literal markup in table text",
+    /<span|&lt;span/.test(d.querySelector("#t-l2").textContent), false);
+
+  // facts that used to be hard-coded in the prose now come from the spec
+  const words2 = spec.co_address_space.size_bytes / spec.co_address_space.register_size_bytes;
+  check("CO facts injected from spec",
+    d.getElementById("co-facts").textContent.includes(String(words2)), true);
+  check("application CO base injected",
+    [...d.querySelectorAll(".appbase")].every((x) => x.textContent.length > 0), true);
+  check("FW header size injected",
+    d.getElementById("fw-size").textContent
+      .includes(String(spec.fw_banks.header_size)), true);
 
   // the header must say where the data came from
   const prov = d.getElementById("prov").textContent;

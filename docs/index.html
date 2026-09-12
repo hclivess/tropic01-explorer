@@ -165,7 +165,7 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
 <section id="tab-co" hidden>
   <h2>Configuration Object</h2>
   <p class="note">
-    512 bytes, 128 word-aligned registers. Erased state is all ones and writes
+    <span id="co-facts"></span> Erased state is all ones and writes
     only ever clear bits, so every field is a one-way fuse. The chip obeys
     <code>i_config &amp; r_config</code>, latched at start-up — the running
     firmware reads that latch through shared memory, never memory itself.
@@ -174,8 +174,8 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
   <div class="panel">
     <div class="map" id="map"></div>
     <div class="legend">
-      <span><span class="sw" style="background:var(--boot)"></span>bootloader CO (below 0x14)</span>
-      <span><span class="sw" style="background:var(--app)"></span>application CO (0x14 and up)</span>
+      <span><span class="sw" style="background:var(--boot)"></span>bootloader CO (below <span class="appbase"></span>)</span>
+      <span><span class="sw" style="background:var(--app)"></span>application CO (<span class="appbase"></span> and up)</span>
       <span><span class="sw" style="background:#1a212a"></span>no register defined</span>
     </div>
   </div>
@@ -219,7 +219,7 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
     Two banks per firmware is what makes a fail-safe update possible: the new
     image goes to the inactive bank and is only then activated. The header is
     readable only in Start-up mode, via <code>Get_Info(FW_BANK)</code>. The
-    offsets below are derived from the model's own <code>struct</code> format
+    <span id="fw-size"></span> offsets below are derived from the model's own <code>struct</code> format
     string, so they cannot disagree with what it packs.
   </p>
   <div class="panel" id="fwhdr"></div>
@@ -247,7 +247,14 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
     return n;
   };
   const hex = (n, w) => "0x" + n.toString(16).toUpperCase().padStart(w || 2, "0");
-  const esc = (s) => String(s == null ? "" : s);
+  const tag = (cls, text) => el("span", { className: "tag " + cls, textContent: text });
+  // Genuinely escapes. The previous helper of this name did not, which made
+  // `td.innerHTML = esc(c)` a trap for anyone who later passed model text
+  // through it. Cells now take Nodes for anything data-derived; this is only
+  // for the few hand-built template strings below.
+  const esc = (s) => String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 
   /* ---------- header / provenance ---------- */
   const P = S.provenance;
@@ -288,7 +295,9 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
       const tr = el("tr");
       r.forEach((c) => {
         const td = el("td");
-        if (c instanceof Node) td.append(c); else td.innerHTML = esc(c);
+        // Nodes for anything model-derived, text for the rest. No innerHTML
+        // here, so a cell can never become an injection point.
+        if (c instanceof Node) td.append(c); else td.textContent = String(c);
         tr.append(td);
       });
       tb.append(tr);
@@ -398,10 +407,10 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
     ["from", "action", "MAINT_ENA", "has FW", "→ mode", "L2 status", "CHIP_STATUS"],
     S.boot_transitions.map((r) => [
       r.from, r.action, String(r.maintenance_ena), r.has_riscv_fw ? "yes" : "no",
-      '<span class="tag ' + (r.to === "START_UP" ? "boot" : "app") + '">' + r.to + "</span>",
+      tag(r.to === "START_UP" ? "boot" : "app", r.to),
       r.l2_status === null ? "—" :
-        '<span class="tag ' + (r.l2_status === 1 ? "app" : "hot") + '">' +
-        hex(r.l2_status) + " " + (statusName[r.l2_status] || "?") + "</span>",
+        tag(r.l2_status === 1 ? "app" : "hot",
+            hex(r.l2_status) + " " + (statusName[r.l2_status] || "?")),
       hex(r.chip_status),
     ])
   ));
@@ -409,6 +418,15 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
 
   /* ================= CONFIGURATION OBJECT ================= */
   const A = S.co_address_space;
+  // These used to be written into the prose - i.e. a second copy of facts the
+  // spec already holds, which is precisely the drift this repo exists to stop.
+  $("co-facts").textContent =
+    A.size_bytes + " bytes, " + (A.size_bytes / A.register_size_bytes) +
+    " word-aligned registers.";
+  [...document.querySelectorAll(".appbase")].forEach((n) => {
+    n.textContent = hex(A.application_base, 2);
+  });
+  $("fw-size").textContent = S.fw_banks.header_size + "-byte header's";
   const byAddr = {}; S.co_registers.forEach((r) => (byAddr[r.address] = r));
   const map = $("map");
   for (let a = 0; a < A.size_bytes; a += A.register_size_bytes) {
@@ -468,7 +486,7 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
   put("t-co", table(["address", "register", "origin", "half", "fields"],
     S.co_registers.map((r) => [
       hex(r.address, 3), r.name,
-      '<span class="tag ' + (r.origin === "application" ? "app" : "boot") + '">' + r.origin + "</span>",
+      tag(r.origin === "application" ? "app" : "boot", r.origin),
       r.half, String(r.fields.length),
     ])));
 
@@ -478,8 +496,8 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
     S.l2_requests.map((r) => [
       hex(r.id), r.name,
       ...modes.map((m) => r.modes.includes(m)
-        ? '<span class="tag ' + (m === "START_UP" ? "boot" : "app") + '">served</span>'
-        : '<span class="tag no">unknown_req</span>'),
+        ? tag(m === "START_UP" ? "boot" : "app", "served")
+        : tag("no", "unknown_req")),
       el("span", { className: "doc", textContent: r.reason || "—" }),
     ])));
 
@@ -564,9 +582,7 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
   put("t-banks", table(["BANK_ID", "name", "populated by default", "description"],
     F.bank_ids.map((b) => [
       hex(b.value), b.name,
-      F.default_populated.includes(b.value)
-        ? '<span class="tag app">yes</span>'
-        : '<span class="tag no">empty</span>',
+      F.default_populated.includes(b.value) ? tag("app", "yes") : tag("no", "empty"),
       el("span", { className: "doc", textContent: b.doc || "—" }),
     ])));
 

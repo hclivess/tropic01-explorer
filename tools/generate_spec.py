@@ -61,7 +61,6 @@ from tvl.targets.model.internal.configuration_object import (
 from tvl.targets.model.internal import fw_bank as fw_bank_mod
 from tvl.targets.model.internal.fw_bank import (
     FW_HEADER_SIZE,
-    FwBank,
     FwBankIdEnum,
     FwBanks,
     FwTypeEnum,
@@ -246,9 +245,20 @@ def fw_bank_layout() -> Dict[str, Any]:
     # The header layout is a struct format string; derive the field sizes from
     # it rather than restating them, so a change to the struct shows up here.
     fmt = fw_bank_mod._HEADER_STRUCT.format
+    # The one place this file names something the model does not hand it: the
+    # struct format carries sizes but not labels. Guarded two ways, because a
+    # silent mislabel here would be exactly the drift this repo exists to stop.
     names = ["type", "_padding", "header_version", "version", "size", "git_hash",
              "hash", "pair_version"]
-    sizes = [struct_size(piece) for piece in split_struct_format(fmt)]
+    pieces = split_struct_format(fmt)
+    if len(names) != len(pieces):
+        raise SystemExit(
+            f"FW header field names are out of step with the model's struct "
+            f"format {fmt!r}: {len(names)} names, {len(pieces)} fields. "
+            f"Update `names` in fw_bank_layout() - zip() would otherwise "
+            f"silently mislabel every field after the change."
+        )
+    sizes = [struct_size(piece) for piece in pieces]
     offset = 0
     fields = []
     for name, size in zip(names, sizes):
@@ -261,6 +271,11 @@ def fw_bank_layout() -> Dict[str, Any]:
             }
         )
         offset += size
+    if offset != FW_HEADER_SIZE:
+        raise SystemExit(
+            f"FW header struct {fmt!r} packs {offset} bytes but the model "
+            f"declares FW_HEADER_SIZE = {FW_HEADER_SIZE}."
+        )
     return {
         "header_size": FW_HEADER_SIZE,
         "struct_format": fmt,
@@ -522,6 +537,22 @@ def provenance() -> Dict[str, Any]:
 
 
 def build() -> Dict[str, Any]:
+    spec = _build()
+    # A capture that silently produced nothing would sail through every
+    # downstream check - empty renders as empty, and "the page shows everything
+    # the spec contains" is vacuously true of an empty spec. Refuse to emit one.
+    for key in ("chip_modes", "co_registers", "l2_requests", "boot_transitions",
+                "wire_traces", "chip_status_flags"):
+        if not spec.get(key):
+            raise SystemExit(
+                f"refusing to emit a spec with an empty '{key}' - the model "
+                f"introspection or capture produced nothing, which means this "
+                f"generator is broken, not that the model is empty."
+            )
+    return spec
+
+
+def _build() -> Dict[str, Any]:
     return {
         "provenance": provenance(),
         "chip_modes": chip_modes(),
