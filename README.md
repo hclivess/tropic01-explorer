@@ -38,6 +38,20 @@ reimplementation of the state machine to disagree with the Python one.
 Likewise the wire traces are bytes a real model really emitted, captured by
 driving a real `Host` against a real `Tropic01Model`.
 
+The **Examples** tab runs ts-tvl's own `examples/` scripts unmodified and shows,
+for each: its source, its `stdout`, and **its full log stream** — 43 to 236 lines
+per script of the model and host narrating the protocol to each other. Every one
+of the four calls `setup_logging()`, so every one has a log; showing only what a
+script `print`s would hide most of what it does.
+
+Capturing the log needed two things beyond hooking the send path. `dictConfig`
+defaults to `disable_existing_loggers=True` and `logging.getLogger("host")` is
+the same object every run, so the second capture onwards was silent until the
+loggers are re-enabled per run. And CPython object reprs carry a memory address,
+which was the last thing differing between invocations once the entropy was
+pinned — scrubbed narrowly at the `... at 0x...>` form so real hex in the logs is
+untouched.
+
 The **Try it** tab is the same idea taken as far as it goes: every request worth
 sending, sent in every mode, each against a *fresh* chip so nothing leaks
 between them. 42 exchanges. Picking one shows what the model actually answered

@@ -210,8 +210,16 @@ dom.window.addEventListener("load", () => {
   const l3Calls = spec.examples.reduce(
     (a, x) => a + x.calls.filter((c) => c.kind === "L3").length, 0);
   check("L3 exchanges marked", n("#examples .call.l3"), l3Calls);
-  const withOutput = spec.examples.filter((x) => x.stdout).length;
-  check("captured stdout shown", n("#examples .out"), withOutput);
+  const streams = spec.examples.reduce(
+    (a, x) => a + (x.stdout ? 1 : 0) + (x.logs ? 1 : 0), 0);
+  check("captured output streams shown", n("#examples .out"), streams);
+  check("log streams shown", n("#examples .out.logstream"),
+    spec.examples.filter((x) => x.logs).length);
+  // every example calls setup_logging(), so every one must have a log
+  check("every example captured its log",
+    spec.examples.filter((x) => x.logs).length, spec.examples.length);
+  check("logs carry no object addresses",
+    spec.examples.some((x) => / at 0x[0-9a-f]{6,}>/.test(x.logs || "")), false);
   check("no example raised", spec.examples.filter((x) => x.error).length, 0);
   // masking must be visible wherever the capture says bytes moved
   const anyVolatile = spec.examples.some((x) => x.any_volatile);

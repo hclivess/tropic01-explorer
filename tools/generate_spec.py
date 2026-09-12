@@ -690,6 +690,58 @@ def repo_examples(ts_tvl: pathlib.Path) -> List[Dict[str, Any]]:
     if not directory.is_dir():
         return []
 
+    @contextlib.contextmanager
+    def captured_logs():
+        """Collect what the examples log, instead of throwing it away.
+
+        Every example calls `setup_logging()`, which runs `dictConfig` and so
+        *replaces* the root handlers - a handler attached beforehand is
+        discarded. So wrap `setup_logging` itself: let the real one run, then
+        attach a capturing handler on top.
+
+        The formatter is ts-tvl's own `TVLFormatter` with its own format string,
+        colours off, so the text matches what a person running the script sees
+        rather than a format invented here.
+        """
+        import logging
+
+        from tvl import logging_utils
+
+        buffer = io.StringIO()
+        handler = logging.StreamHandler(buffer)
+        # ts-tvl's own formatter and its own format string, colours off, so the
+        # text matches what a person running the script sees.
+        handler.setFormatter(
+            logging_utils.TVLFormatter(
+                use_colors=False,
+                format="[%(name)s] [%(levelname)s] %(message)s",
+            )
+        )
+        real_setup = logging_utils.setup_logging
+
+        def setup_and_capture(*args: Any, **kwargs: Any) -> Any:
+            result = real_setup(*args, **kwargs)
+            # `dictConfig` defaults to disable_existing_loggers=True, and
+            # `logging.getLogger("host")` returns the *same* object on every
+            # run. So the first run logs and every run after it is silent - the
+            # second `setup_logging()` disables the loggers the first created.
+            # Each capture has to start like a fresh process, or the runs
+            # disagree and the whole log is dropped as non-reproducible.
+            for existing in logging.root.manager.loggerDict.values():
+                if isinstance(existing, logging.Logger):
+                    existing.disabled = False
+            root = logging.getLogger()
+            root.addHandler(handler)
+            root.setLevel(logging.DEBUG)
+            return result
+
+        logging_utils.setup_logging = setup_and_capture  # type: ignore[assignment]
+        try:
+            yield buffer
+        finally:
+            logging_utils.setup_logging = real_setup  # type: ignore[assignment]
+            logging.getLogger().removeHandler(handler)
+
     def record(path: pathlib.Path) -> Dict[str, Any]:
         calls: List[Dict[str, Any]] = []
         original_request = Host._ll_send_l2
@@ -737,16 +789,36 @@ def repo_examples(ts_tvl: pathlib.Path) -> List[Dict[str, Any]]:
         Host._ll_send_l3 = wrap_l3(original_command)  # type: ignore[assignment]
         out = io.StringIO()
         error: Optional[str] = None
+        logs = ""
         try:
-            with pinned_entropy(), contextlib.redirect_stdout(out), \
+            with pinned_entropy(), captured_logs() as log_buffer, \
+                 contextlib.redirect_stdout(out), \
                  contextlib.redirect_stderr(io.StringIO()):
                 runpy.run_path(str(path), run_name="__not_main__")
+                logs = log_buffer.getvalue()
         except Exception as exc:  # an example that breaks is worth showing
             error = f"{type(exc).__name__}: {exc}"
         finally:
             Host._ll_send_l2 = original_request  # type: ignore[assignment]
             Host._ll_send_l3 = original_command  # type: ignore[assignment]
-        return {"calls": calls, "stdout": out.getvalue(), "error": error}
+        return {
+            "calls": calls,
+            "stdout": out.getvalue(),
+            "logs": scrub(logs),
+            "error": error,
+        }
+
+    def scrub(text: str) -> str:
+        """Remove CPython object addresses from captured log text.
+
+        The logs contain reprs like `<function ll_send_l2_request at
+        0x76750c583100>`. The address is where the object happened to land in
+        memory this process - it is not protocol content, and it is the only
+        thing left that differs between runs once the entropy is pinned.
+        Targeted narrowly at the `... at 0x...>` repr form so that genuine hex
+        in the logs (`RSP_LEN: 0x80`, `<195: 0xc3>`) is untouched.
+        """
+        return re.sub(r"(<[^<>]*? at )0x[0-9a-f]+(>)", r"\g<1>0x...\g<2>", text)
 
     def mask(values: List[str]) -> Optional[str]:
         """Hex with session-dependent nibbles replaced by '.', or None.
@@ -797,6 +869,7 @@ def repo_examples(ts_tvl: pathlib.Path) -> List[Dict[str, Any]]:
                 "title": _example_title(source) or path.stem.replace("_", " "),
                 "source": source,
                 "stdout": agree([r["stdout"] for r in runs]),
+                "logs": agree([r["logs"] for r in runs]),
                 "error": runs[0]["error"],
                 "calls": merged,
                 "any_volatile": any(c["volatile"] for c in merged),
