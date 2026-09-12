@@ -216,7 +216,8 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
 <section id="tab-try" hidden>
   <h2>Send a request</h2>
   <p class="note">
-    Pick a mode and a request. Every answer here is bytes the model really
+    This follows the chip's current mode — reboot in the <b>Boot</b> tab and the
+    answers here change with it. Every answer is bytes the model really
     produced — each one captured against a fresh chip put into that mode, so
     nothing leaks between them. The same request is shown in the other mode
     alongside, which is the fastest way to see what changes when the bootloader
@@ -426,10 +427,11 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
       " · CHIP_STATUS " + hex(row.chip_status)
     );
     renderBoot();
+    renderTry();   // the surface you can talk to just changed
   }
 
   function renderBoot() {
-    const reboot = () => { settle(); renderBoot(); };
+    const reboot = () => { settle(); renderBoot(); renderTry(); };
     segment($("seg-maint"), [["1 enabled", 1], ["0 disabled", 0]],
       () => st.maint, (v) => { st.maint = v; }, reboot);
     segment($("seg-fw"), [["yes", true], ["no", false]],
@@ -586,7 +588,10 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
 
   /* ================= TRY IT ================= */
   const X = S.exchanges;
-  const tryState = { mode: X[0].mode, key: null };
+  // There is one chip, so there is one mode. This panel reads `st.mode`, the
+  // same state the boot panel drives - rebooting there changes what you can
+  // send here, which is the entire point of modelling modes at all.
+  const tryState = { key: null };
   const keyOf = (e) => e.group + " · " + e.label;
   const allKeys = [...new Set(X.map(keyOf))];
   tryState.key = allKeys[0];
@@ -651,7 +656,16 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
 
   function renderTry() {
     segment($("try-mode"), S.chip_modes.map((m) => [m.name, m.name]),
-      () => tryState.mode, (v) => { tryState.mode = v; }, renderTry);
+      () => st.mode,
+      (v) => {
+        if (v === st.mode) return;
+        // Setting the mode here is a shortcut, not a transition the model
+        // performed, so drop the readouts a transition would have produced and
+        // say so in the log rather than leaving a stale status on screen.
+        st.mode = v; st.status = null; st.chip = null; st.stranded = false;
+        logLines.unshift("<b>mode set directly</b> · now <b>" + v + "</b> · no reboot was performed");
+      },
+      () => { renderBoot(); renderTry(); });
 
     const pick = $("try-pick");
     if (!pick.options.length) {
@@ -671,8 +685,8 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
     pick.value = tryState.key;
 
     const other = S.chip_modes.map((m) => m.name)
-      .find((m) => m !== tryState.mode) || tryState.mode;
-    const a = exchange(tryState.mode, tryState.key);
+      .find((m) => m !== st.mode) || st.mode;
+    const a = exchange(st.mode, tryState.key);
     const b = exchange(other, tryState.key);
     renderPane($("try-main"), a, true, b);
     renderPane($("try-other"), b, false, a);
