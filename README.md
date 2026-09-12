@@ -38,6 +38,22 @@ reimplementation of the state machine to disagree with the Python one.
 Likewise the wire traces are bytes a real model really emitted, captured by
 driving a real `Host` against a real `Tropic01Model`.
 
+The **Try it** tab is the same idea taken as far as it goes: every request worth
+sending, sent in every mode, each against a *fresh* chip so nothing leaks
+between them. 42 exchanges. Picking one shows what the model actually answered
+and what the *other* firmware answers to the identical bytes — which is the
+quickest way to see the shape of the change:
+
+| request | Application | Start-up |
+|---|---|---|
+| `Get_Info(FW_BANK)` | `0x7F GEN_ERR` | `0x01 REQ_OK` |
+| `Handshake_Req` | `0x01 REQ_OK` | `0x7E UNKNOWN_REQ` |
+| `Sleep_Req` | `0x01 REQ_OK` | `0x7E UNKNOWN_REQ` |
+| `Get_Info(CHIP_ID)` | `0x01` — byte-identical | `0x01` — byte-identical |
+
+None of that table is typed here by a person either; it is what the capture
+came back with.
+
 **3. Enforcement.** The generator's `--check` mode regenerates in memory and
 fails if `docs/model_spec.js` differs. That gate runs **before every push**:
 

@@ -500,6 +500,119 @@ def wire_traces() -> List[Dict[str, Any]]:
     return traces
 
 
+def exchanges() -> List[Dict[str, Any]]:
+    """Every request worth sending, in every mode, actually sent.
+
+    This is what makes the page an explorer rather than a diagram: the user
+    picks a mode and a request, and sees the bytes the model really answered
+    with. Each exchange runs against a *fresh* model put into the target mode,
+    so nothing leaks from one into the next and the list can be replayed in any
+    order.
+    """
+    from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
+
+    oid = TsL2GetInfoRequest.ObjectIdEnum
+    sleep_kind = TsL2SleepRequest.SleepKindEnum
+    startup_id = TsL2StartupRequest.StartupIdEnum
+    host_priv = bytes(range(32))
+    host_pub = X25519PrivateKey.from_private_bytes(host_priv).public_key().public_bytes_raw()
+    tropic_priv = bytes(range(32, 64))
+    tropic_pub = X25519PrivateKey.from_private_bytes(tropic_priv).public_key().public_bytes_raw()
+
+    def fresh(mode: ChipMode):
+        model = Tropic01Model(
+            debug_random_value=bytes(4), busy_iter=[False],
+            s_t_priv=tropic_priv, s_t_pub=tropic_pub,
+        )
+        model.i_pairing_keys[0].write(host_pub)
+        model.power_on()
+        if mode is ChipMode.START_UP:
+            model.reboot(BootTarget.START_UP)
+        host = Host(
+            s_h_priv=[host_priv], s_h_pub=[host_pub], s_t_pub=tropic_pub,
+            pairing_key_index=0, debug_random_value=bytes(4),
+        ).set_target(model)
+        return model, host
+
+    def cases(host: Host):
+        """(group, label, params, request) for one host's ephemeral key."""
+        return [
+            ("Get_Info", "X.509 certificate, block 0",
+             {"OBJECT_ID": "X509_CERTIFICATE", "BLOCK_INDEX": 0},
+             TsL2GetInfoRequest(object_id=oid.X509_CERTIFICATE, block_index=0)),
+            ("Get_Info", "X.509 certificate, block 29 (last)",
+             {"OBJECT_ID": "X509_CERTIFICATE", "BLOCK_INDEX": 29},
+             TsL2GetInfoRequest(object_id=oid.X509_CERTIFICATE, block_index=29)),
+            ("Get_Info", "X.509 certificate, block 30 (out of range)",
+             {"OBJECT_ID": "X509_CERTIFICATE", "BLOCK_INDEX": 30},
+             TsL2GetInfoRequest(object_id=oid.X509_CERTIFICATE, block_index=30)),
+            ("Get_Info", "chip ID", {"OBJECT_ID": "CHIP_ID"},
+             TsL2GetInfoRequest(object_id=oid.CHIP_ID, block_index=0)),
+            ("Get_Info", "RISC-V FW version", {"OBJECT_ID": "RISCV_FW_VERSION"},
+             TsL2GetInfoRequest(object_id=oid.RISCV_FW_VERSION, block_index=0)),
+            ("Get_Info", "SPECT FW version", {"OBJECT_ID": "SPECT_FW_VERSION"},
+             TsL2GetInfoRequest(object_id=oid.SPECT_FW_VERSION, block_index=0)),
+            *[
+                ("Get_Info", f"FW bank {bank.name}",
+                 {"OBJECT_ID": "FW_BANK", "BANK_ID": bank.name},
+                 TsL2GetInfoRequest(object_id=oid.FW_BANK, block_index=bank))
+                for bank in FwBankIdEnum
+            ],
+            ("Get_Info", "unknown OBJECT_ID 0x55", {"OBJECT_ID": "0x55"},
+             TsL2GetInfoRequest(object_id=0x55, block_index=0)),
+            ("Handshake", "pairing key slot 0 (written)", {"PKEY_INDEX": 0},
+             TsL2HandshakeRequest(e_hpub=host.session.create_handshake_request(),
+                                  pkey_index=0)),
+            ("Handshake", "pairing key slot 3 (blank)", {"PKEY_INDEX": 3},
+             TsL2HandshakeRequest(e_hpub=host.session.create_handshake_request(),
+                                  pkey_index=3)),
+            ("Session", "Encrypted_Session_Abt", {},
+             TsL2EncryptedSessionAbtRequest()),
+            ("Transport", "Resend_Req", {}, TsL2ResendRequest()),
+            ("Transport", "Get_Log_Req", {}, TsL2GetLogRequest()),
+            ("Sleep", "SLEEP_MODE", {"SLEEP_KIND": "SLEEP_MODE"},
+             TsL2SleepRequest(sleep_kind=sleep_kind.SLEEP_MODE)),
+            ("Sleep", "invalid kind 0x77", {"SLEEP_KIND": "0x77"},
+             TsL2SleepRequest(sleep_kind=0x77)),
+            *[
+                ("Startup", sid.name, {"STARTUP_ID": sid.name},
+                 TsL2StartupRequest(startup_id=sid))
+                for sid in startup_id
+            ],
+            ("Startup", "invalid id 0x99", {"STARTUP_ID": "0x99"},
+             TsL2StartupRequest(startup_id=0x99)),
+        ]
+
+    out: List[Dict[str, Any]] = []
+    for mode in ChipMode:
+        # How many cases there are is fixed, so build one host just to size the
+        # list, then run each case on its own untouched model.
+        probe_model, probe_host = fresh(mode)
+        count = len(cases(probe_host))
+        for index in range(count):
+            model, host = fresh(mode)
+            if model.chip_mode is not mode:
+                continue  # mode not reachable for this build
+            group, label, params, request = cases(host)[index]
+            raw_request = request.to_bytes()
+            raw_response = bytes(host.send_request(raw_request))
+            out.append(
+                {
+                    "mode": mode.name,
+                    "group": group,
+                    "label": label,
+                    "request_class": type(request).__name__,
+                    "params": params,
+                    "request": raw_request.hex(),
+                    "response": raw_response.hex(),
+                    "status": raw_response[0] if raw_response else None,
+                    "chip_status_after": read_chip_status(model),
+                    "mode_after": model.chip_mode.name,
+                }
+            )
+    return out
+
+
 def frame_layouts() -> Dict[str, Any]:
     return {
         "request": [
@@ -555,7 +668,7 @@ def build() -> Dict[str, Any]:
     # downstream check - empty renders as empty, and "the page shows everything
     # the spec contains" is vacuously true of an empty spec. Refuse to emit one.
     for key in ("chip_modes", "co_registers", "l2_requests", "boot_transitions",
-                "wire_traces", "chip_status_flags"):
+                "wire_traces", "chip_status_flags", "exchanges"):
         if not spec.get(key):
             raise SystemExit(
                 f"refusing to emit a spec with an empty '{key}' - the model "
@@ -587,6 +700,7 @@ def _build() -> Dict[str, Any]:
         "frame_layouts": frame_layouts(),
         "boot_transitions": boot_transitions(),
         "wire_traces": wire_traces(),
+        "exchanges": exchanges(),
     }
 
 
@@ -633,7 +747,8 @@ def main() -> int:
         f"{len(spec['co_registers'])} CO registers, "
         f"{len(spec['l2_requests'])} L2 requests, "
         f"{len(spec['boot_transitions'])} boot transitions, "
-        f"{len(spec['wire_traces'])} traces"
+        f"{len(spec['wire_traces'])} traces, "
+        f"{len(spec['exchanges'])} exchanges"
     )
     return 0
 

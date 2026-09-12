@@ -1053,6 +1053,598 @@ window.MODEL_SPEC = {
    "origin": "application"
   }
  ],
+ "exchanges": [
+  {
+   "chip_status_after": 5,
+   "group": "Get_Info",
+   "label": "X.509 certificate, block 0",
+   "mode": "START_UP",
+   "mode_after": "START_UP",
+   "params": {
+    "BLOCK_INDEX": 0,
+    "OBJECT_ID": "X509_CERTIFICATE"
+   },
+   "request": "010200002814",
+   "request_class": "TsL2GetInfoRequest",
+   "response": "0180783530395f636572746966696361746500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000bc95",
+   "status": 1
+  },
+  {
+   "chip_status_after": 5,
+   "group": "Get_Info",
+   "label": "X.509 certificate, block 29 (last)",
+   "mode": "START_UP",
+   "mode_after": "START_UP",
+   "params": {
+    "BLOCK_INDEX": 29,
+    "OBJECT_ID": "X509_CERTIFICATE"
+   },
+   "request": "0102001d6614",
+   "request_class": "TsL2GetInfoRequest",
+   "response": "01800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004e",
+   "status": 1
+  },
+  {
+   "chip_status_after": 5,
+   "group": "Get_Info",
+   "label": "X.509 certificate, block 30 (out of range)",
+   "mode": "START_UP",
+   "mode_after": "START_UP",
+   "params": {
+    "BLOCK_INDEX": 30,
+    "OBJECT_ID": "X509_CERTIFICATE"
+   },
+   "request": "0102001e6c14",
+   "request_class": "TsL2GetInfoRequest",
+   "response": "7f000602",
+   "status": 127
+  },
+  {
+   "chip_status_after": 5,
+   "group": "Get_Info",
+   "label": "chip ID",
+   "mode": "START_UP",
+   "mode_after": "START_UP",
+   "params": {
+    "OBJECT_ID": "CHIP_ID"
+   },
+   "request": "010201002b92",
+   "request_class": "TsL2GetInfoRequest",
+   "response": "0180636869705f6964000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005855",
+   "status": 1
+  },
+  {
+   "chip_status_after": 5,
+   "group": "Get_Info",
+   "label": "RISC-V FW version",
+   "mode": "START_UP",
+   "mode_after": "START_UP",
+   "params": {
+    "OBJECT_ID": "RISCV_FW_VERSION"
+   },
+   "request": "010202002b98",
+   "request_class": "TsL2GetInfoRequest",
+   "response": "010400010082fbfa",
+   "status": 1
+  },
+  {
+   "chip_status_after": 5,
+   "group": "Get_Info",
+   "label": "SPECT FW version",
+   "mode": "START_UP",
+   "mode_after": "START_UP",
+   "params": {
+    "OBJECT_ID": "SPECT_FW_VERSION"
+   },
+   "request": "010204002b8c",
+   "request_class": "TsL2GetInfoRequest",
+   "response": "010400000080e3fa",
+   "status": 1
+  },
+  {
+   "chip_status_after": 5,
+   "group": "Get_Info",
+   "label": "FW bank FW1",
+   "mode": "START_UP",
+   "mode_after": "START_UP",
+   "params": {
+    "BANK_ID": "FW1",
+    "OBJECT_ID": "FW_BANK"
+   },
+   "request": "0102b00124b4",
+   "request_class": "TsL2GetInfoRequest",
+   "response": "013401000001000000020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f6fe",
+   "status": 1
+  },
+  {
+   "chip_status_after": 5,
+   "group": "Get_Info",
+   "label": "FW bank FW2",
+   "mode": "START_UP",
+   "mode_after": "START_UP",
+   "params": {
+    "BANK_ID": "FW2",
+    "OBJECT_ID": "FW_BANK"
+   },
+   "request": "0102b0022eb4",
+   "request_class": "TsL2GetInfoRequest",
+   "response": "01000386",
+   "status": 1
+  },
+  {
+   "chip_status_after": 5,
+   "group": "Get_Info",
+   "label": "FW bank SPECT1",
+   "mode": "START_UP",
+   "mode_after": "START_UP",
+   "params": {
+    "BANK_ID": "SPECT1",
+    "OBJECT_ID": "FW_BANK"
+   },
+   "request": "0102b0114734",
+   "request_class": "TsL2GetInfoRequest",
+   "response": "01340200000100000201000000000000000000000000000000000000000000000000000000000000000000000000000000000000000041ca",
+   "status": 1
+  },
+  {
+   "chip_status_after": 5,
+   "group": "Get_Info",
+   "label": "FW bank SPECT2",
+   "mode": "START_UP",
+   "mode_after": "START_UP",
+   "params": {
+    "BANK_ID": "SPECT2",
+    "OBJECT_ID": "FW_BANK"
+   },
+   "request": "0102b0124d34",
+   "request_class": "TsL2GetInfoRequest",
+   "response": "01000386",
+   "status": 1
+  },
+  {
+   "chip_status_after": 5,
+   "group": "Get_Info",
+   "label": "unknown OBJECT_ID 0x55",
+   "mode": "START_UP",
+   "mode_after": "START_UP",
+   "params": {
+    "OBJECT_ID": "0x55"
+   },
+   "request": "010255002d6a",
+   "request_class": "TsL2GetInfoRequest",
+   "response": "7f000602",
+   "status": 127
+  },
+  {
+   "chip_status_after": 5,
+   "group": "Handshake",
+   "label": "pairing key slot 0 (written)",
+   "mode": "START_UP",
+   "mode_after": "START_UP",
+   "params": {
+    "PKEY_INDEX": 0
+   },
+   "request": "02214dba7a327f79efb96cc121237057c1398cac8068836c06209f5f45a9cffc946e002641",
+   "request_class": "TsL2HandshakeRequest",
+   "response": "7e000584",
+   "status": 126
+  },
+  {
+   "chip_status_after": 5,
+   "group": "Handshake",
+   "label": "pairing key slot 3 (blank)",
+   "mode": "START_UP",
+   "mode_after": "START_UP",
+   "params": {
+    "PKEY_INDEX": 3
+   },
+   "request": "02214dba7a327f79efb96cc121237057c1398cac8068836c06209f5f45a9cffc946e032c41",
+   "request_class": "TsL2HandshakeRequest",
+   "response": "7e000584",
+   "status": 126
+  },
+  {
+   "chip_status_after": 5,
+   "group": "Session",
+   "label": "Encrypted_Session_Abt",
+   "mode": "START_UP",
+   "mode_after": "START_UP",
+   "params": {},
+   "request": "080003b0",
+   "request_class": "TsL2EncryptedSessionAbtRequest",
+   "response": "7e000584",
+   "status": 126
+  },
+  {
+   "chip_status_after": 5,
+   "group": "Transport",
+   "label": "Resend_Req",
+   "mode": "START_UP",
+   "mode_after": "START_UP",
+   "params": {},
+   "request": "100003e0",
+   "request_class": "TsL2ResendRequest",
+   "response": "7f000602",
+   "status": 127
+  },
+  {
+   "chip_status_after": 5,
+   "group": "Transport",
+   "label": "Get_Log_Req",
+   "mode": "START_UP",
+   "mode_after": "START_UP",
+   "params": {},
+   "request": "a200094c",
+   "request_class": "TsL2GetLogRequest",
+   "response": "01000386",
+   "status": 1
+  },
+  {
+   "chip_status_after": 5,
+   "group": "Sleep",
+   "label": "SLEEP_MODE",
+   "mode": "START_UP",
+   "mode_after": "START_UP",
+   "params": {
+    "SLEEP_KIND": "SLEEP_MODE"
+   },
+   "request": "2001059e04",
+   "request_class": "TsL2SleepRequest",
+   "response": "7e000584",
+   "status": 126
+  },
+  {
+   "chip_status_after": 5,
+   "group": "Sleep",
+   "label": "invalid kind 0x77",
+   "mode": "START_UP",
+   "mode_after": "START_UP",
+   "params": {
+    "SLEEP_KIND": "0x77"
+   },
+   "request": "200177b205",
+   "request_class": "TsL2SleepRequest",
+   "response": "7e000584",
+   "status": 126
+  },
+  {
+   "chip_status_after": 1,
+   "group": "Startup",
+   "label": "REBOOT",
+   "mode": "START_UP",
+   "mode_after": "APPLICATION",
+   "params": {
+    "STARTUP_ID": "REBOOT"
+   },
+   "request": "b30101f98f",
+   "request_class": "TsL2StartupRequest",
+   "response": "01000386",
+   "status": 1
+  },
+  {
+   "chip_status_after": 5,
+   "group": "Startup",
+   "label": "MAINTENANCE_REBOOT",
+   "mode": "START_UP",
+   "mode_after": "START_UP",
+   "params": {
+    "STARTUP_ID": "MAINTENANCE_REBOOT"
+   },
+   "request": "b30103f60f",
+   "request_class": "TsL2StartupRequest",
+   "response": "01000386",
+   "status": 1
+  },
+  {
+   "chip_status_after": 5,
+   "group": "Startup",
+   "label": "invalid id 0x99",
+   "mode": "START_UP",
+   "mode_after": "START_UP",
+   "params": {
+    "STARTUP_ID": "0x99"
+   },
+   "request": "b30199aa0c",
+   "request_class": "TsL2StartupRequest",
+   "response": "7f000602",
+   "status": 127
+  },
+  {
+   "chip_status_after": 1,
+   "group": "Get_Info",
+   "label": "X.509 certificate, block 0",
+   "mode": "APPLICATION",
+   "mode_after": "APPLICATION",
+   "params": {
+    "BLOCK_INDEX": 0,
+    "OBJECT_ID": "X509_CERTIFICATE"
+   },
+   "request": "010200002814",
+   "request_class": "TsL2GetInfoRequest",
+   "response": "0180783530395f636572746966696361746500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000bc95",
+   "status": 1
+  },
+  {
+   "chip_status_after": 1,
+   "group": "Get_Info",
+   "label": "X.509 certificate, block 29 (last)",
+   "mode": "APPLICATION",
+   "mode_after": "APPLICATION",
+   "params": {
+    "BLOCK_INDEX": 29,
+    "OBJECT_ID": "X509_CERTIFICATE"
+   },
+   "request": "0102001d6614",
+   "request_class": "TsL2GetInfoRequest",
+   "response": "01800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004e",
+   "status": 1
+  },
+  {
+   "chip_status_after": 1,
+   "group": "Get_Info",
+   "label": "X.509 certificate, block 30 (out of range)",
+   "mode": "APPLICATION",
+   "mode_after": "APPLICATION",
+   "params": {
+    "BLOCK_INDEX": 30,
+    "OBJECT_ID": "X509_CERTIFICATE"
+   },
+   "request": "0102001e6c14",
+   "request_class": "TsL2GetInfoRequest",
+   "response": "7f000602",
+   "status": 127
+  },
+  {
+   "chip_status_after": 1,
+   "group": "Get_Info",
+   "label": "chip ID",
+   "mode": "APPLICATION",
+   "mode_after": "APPLICATION",
+   "params": {
+    "OBJECT_ID": "CHIP_ID"
+   },
+   "request": "010201002b92",
+   "request_class": "TsL2GetInfoRequest",
+   "response": "0180636869705f6964000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005855",
+   "status": 1
+  },
+  {
+   "chip_status_after": 1,
+   "group": "Get_Info",
+   "label": "RISC-V FW version",
+   "mode": "APPLICATION",
+   "mode_after": "APPLICATION",
+   "params": {
+    "OBJECT_ID": "RISCV_FW_VERSION"
+   },
+   "request": "010202002b98",
+   "request_class": "TsL2GetInfoRequest",
+   "response": "010400000002eff9",
+   "status": 1
+  },
+  {
+   "chip_status_after": 1,
+   "group": "Get_Info",
+   "label": "SPECT FW version",
+   "mode": "APPLICATION",
+   "mode_after": "APPLICATION",
+   "params": {
+    "OBJECT_ID": "SPECT_FW_VERSION"
+   },
+   "request": "010204002b8c",
+   "request_class": "TsL2GetInfoRequest",
+   "response": "010400000201e675",
+   "status": 1
+  },
+  {
+   "chip_status_after": 1,
+   "group": "Get_Info",
+   "label": "FW bank FW1",
+   "mode": "APPLICATION",
+   "mode_after": "APPLICATION",
+   "params": {
+    "BANK_ID": "FW1",
+    "OBJECT_ID": "FW_BANK"
+   },
+   "request": "0102b00124b4",
+   "request_class": "TsL2GetInfoRequest",
+   "response": "7f000602",
+   "status": 127
+  },
+  {
+   "chip_status_after": 1,
+   "group": "Get_Info",
+   "label": "FW bank FW2",
+   "mode": "APPLICATION",
+   "mode_after": "APPLICATION",
+   "params": {
+    "BANK_ID": "FW2",
+    "OBJECT_ID": "FW_BANK"
+   },
+   "request": "0102b0022eb4",
+   "request_class": "TsL2GetInfoRequest",
+   "response": "7f000602",
+   "status": 127
+  },
+  {
+   "chip_status_after": 1,
+   "group": "Get_Info",
+   "label": "FW bank SPECT1",
+   "mode": "APPLICATION",
+   "mode_after": "APPLICATION",
+   "params": {
+    "BANK_ID": "SPECT1",
+    "OBJECT_ID": "FW_BANK"
+   },
+   "request": "0102b0114734",
+   "request_class": "TsL2GetInfoRequest",
+   "response": "7f000602",
+   "status": 127
+  },
+  {
+   "chip_status_after": 1,
+   "group": "Get_Info",
+   "label": "FW bank SPECT2",
+   "mode": "APPLICATION",
+   "mode_after": "APPLICATION",
+   "params": {
+    "BANK_ID": "SPECT2",
+    "OBJECT_ID": "FW_BANK"
+   },
+   "request": "0102b0124d34",
+   "request_class": "TsL2GetInfoRequest",
+   "response": "7f000602",
+   "status": 127
+  },
+  {
+   "chip_status_after": 1,
+   "group": "Get_Info",
+   "label": "unknown OBJECT_ID 0x55",
+   "mode": "APPLICATION",
+   "mode_after": "APPLICATION",
+   "params": {
+    "OBJECT_ID": "0x55"
+   },
+   "request": "010255002d6a",
+   "request_class": "TsL2GetInfoRequest",
+   "response": "7f000602",
+   "status": 127
+  },
+  {
+   "chip_status_after": 1,
+   "group": "Handshake",
+   "label": "pairing key slot 0 (written)",
+   "mode": "APPLICATION",
+   "mode_after": "APPLICATION",
+   "params": {
+    "PKEY_INDEX": 0
+   },
+   "request": "02214dba7a327f79efb96cc121237057c1398cac8068836c06209f5f45a9cffc946e002641",
+   "request_class": "TsL2HandshakeRequest",
+   "response": "01304dba7a327f79efb96cc121237057c1398cac8068836c06209f5f45a9cffc946e8a34cb51af100ee7368807b211dd10c05c54",
+   "status": 1
+  },
+  {
+   "chip_status_after": 1,
+   "group": "Handshake",
+   "label": "pairing key slot 3 (blank)",
+   "mode": "APPLICATION",
+   "mode_after": "APPLICATION",
+   "params": {
+    "PKEY_INDEX": 3
+   },
+   "request": "02214dba7a327f79efb96cc121237057c1398cac8068836c06209f5f45a9cffc946e032c41",
+   "request_class": "TsL2HandshakeRequest",
+   "response": "79000616",
+   "status": 121
+  },
+  {
+   "chip_status_after": 1,
+   "group": "Session",
+   "label": "Encrypted_Session_Abt",
+   "mode": "APPLICATION",
+   "mode_after": "APPLICATION",
+   "params": {},
+   "request": "080003b0",
+   "request_class": "TsL2EncryptedSessionAbtRequest",
+   "response": "01000386",
+   "status": 1
+  },
+  {
+   "chip_status_after": 1,
+   "group": "Transport",
+   "label": "Resend_Req",
+   "mode": "APPLICATION",
+   "mode_after": "APPLICATION",
+   "params": {},
+   "request": "100003e0",
+   "request_class": "TsL2ResendRequest",
+   "response": "7f000602",
+   "status": 127
+  },
+  {
+   "chip_status_after": 1,
+   "group": "Transport",
+   "label": "Get_Log_Req",
+   "mode": "APPLICATION",
+   "mode_after": "APPLICATION",
+   "params": {},
+   "request": "a200094c",
+   "request_class": "TsL2GetLogRequest",
+   "response": "01000386",
+   "status": 1
+  },
+  {
+   "chip_status_after": 1,
+   "group": "Sleep",
+   "label": "SLEEP_MODE",
+   "mode": "APPLICATION",
+   "mode_after": "APPLICATION",
+   "params": {
+    "SLEEP_KIND": "SLEEP_MODE"
+   },
+   "request": "2001059e04",
+   "request_class": "TsL2SleepRequest",
+   "response": "01000386",
+   "status": 1
+  },
+  {
+   "chip_status_after": 1,
+   "group": "Sleep",
+   "label": "invalid kind 0x77",
+   "mode": "APPLICATION",
+   "mode_after": "APPLICATION",
+   "params": {
+    "SLEEP_KIND": "0x77"
+   },
+   "request": "200177b205",
+   "request_class": "TsL2SleepRequest",
+   "response": "7f000602",
+   "status": 127
+  },
+  {
+   "chip_status_after": 1,
+   "group": "Startup",
+   "label": "REBOOT",
+   "mode": "APPLICATION",
+   "mode_after": "APPLICATION",
+   "params": {
+    "STARTUP_ID": "REBOOT"
+   },
+   "request": "b30101f98f",
+   "request_class": "TsL2StartupRequest",
+   "response": "01000386",
+   "status": 1
+  },
+  {
+   "chip_status_after": 5,
+   "group": "Startup",
+   "label": "MAINTENANCE_REBOOT",
+   "mode": "APPLICATION",
+   "mode_after": "START_UP",
+   "params": {
+    "STARTUP_ID": "MAINTENANCE_REBOOT"
+   },
+   "request": "b30103f60f",
+   "request_class": "TsL2StartupRequest",
+   "response": "01000386",
+   "status": 1
+  },
+  {
+   "chip_status_after": 1,
+   "group": "Startup",
+   "label": "invalid id 0x99",
+   "mode": "APPLICATION",
+   "mode_after": "APPLICATION",
+   "params": {
+    "STARTUP_ID": "0x99"
+   },
+   "request": "b30199aa0c",
+   "request_class": "TsL2StartupRequest",
+   "response": "7f000602",
+   "status": 127
+  }
+ ],
  "frame_layouts": {
   "request": [
    {

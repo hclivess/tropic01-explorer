@@ -110,6 +110,17 @@ td.doc { color: var(--dim); font-size: 12px; }
 .dir { color: var(--faint); width: 1.4em; display: inline-block; }
 .ascii { color: var(--accent); }
 
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 760px) { .split { grid-template-columns: 1fr; } }
+select {
+  font: inherit; font-size: 12.5px; background: #1d242d; color: var(--ink);
+  border: 1px solid var(--edge2); border-radius: 5px; padding: 7px 10px; width: 100%;
+}
+.pane-h { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+.pane-h .who { font-weight: 600; }
+.big { font-size: 15px; font-weight: 600; }
+.same { color: var(--faint); font-size: 11.5px; }
+.hexblock { font-size: 11.5px; color: var(--dim); word-break: break-all; line-height: 1.7; }
 footer { margin-top: 34px; padding-top: 14px; border-top: 1px solid var(--edge); color: var(--faint); font-size: 11.5px; }
 code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12px; }
 </style>
@@ -202,13 +213,37 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
   <div class="panel scroll" id="t-oid"></div>
 </section>
 
-<section id="tab-wire" hidden>
-  <h2>Wire traces</h2>
+<section id="tab-try" hidden>
+  <h2>Send a request</h2>
   <p class="note">
-    Real bytes, captured by driving the model. Determinism is forced — the RNG
-    is pinned and the busy simulation disabled — which is why two handshakes
-    give identical bytes. On silicon that would be alarming; here it is the
-    proof that nothing is floating.
+    Pick a mode and a request. Every answer here is bytes the model really
+    produced — each one captured against a fresh chip put into that mode, so
+    nothing leaks between them. The same request is shown in the other mode
+    alongside, which is the fastest way to see what changes when the bootloader
+    is answering instead of the mutable firmware.
+  </p>
+  <div class="panel">
+    <div class="controls">
+      <div class="ctl">
+        <label>Chip mode</label>
+        <div class="seg" id="try-mode"></div>
+      </div>
+      <div class="ctl" style="flex:1">
+        <label>Request</label>
+        <select id="try-pick"></select>
+      </div>
+    </div>
+  </div>
+  <div class="split">
+    <div class="panel" id="try-main"></div>
+    <div class="panel" id="try-other"></div>
+  </div>
+  <h2>A scripted session</h2>
+  <p class="note">
+    The same machinery run as a sequence rather than one-off. Determinism is
+    forced — the RNG is pinned and the busy simulation disabled — which is why
+    two handshakes give identical bytes. On silicon that would be alarming;
+    here it is the proof that nothing is floating.
   </p>
   <div id="wire"></div>
 </section>
@@ -269,7 +304,7 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
   /* ---------- tabs ---------- */
   const TABS = [
     ["boot", "Boot"], ["co", "Configuration Object"], ["l2", "L2 API"],
-    ["wire", "Wire"], ["fw", "FW banks"], ["about", "How it works"],
+    ["try", "Try it"], ["fw", "FW banks"], ["about", "How it works"],
   ];
   const nav = $("tabs");
   TABS.forEach(([id, label], i) => {
@@ -530,6 +565,100 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
       ])));
   });
 
+  /* ================= TRY IT ================= */
+  const X = S.exchanges;
+  const tryState = { mode: X[0].mode, key: null };
+  const keyOf = (e) => e.group + " · " + e.label;
+  const allKeys = [...new Set(X.map(keyOf))];
+  tryState.key = allKeys[0];
+
+  function exchange(mode, key) {
+    return X.find((e) => e.mode === mode && keyOf(e) === key);
+  }
+
+  function renderPane(node, e, isPrimary, counterpart) {
+    node.innerHTML = "";
+    if (!e) {
+      node.append(el("div", { className: "sub",
+        textContent: "not captured in this mode" }));
+      return;
+    }
+    const head = el("div", { className: "pane-h" });
+    head.append(el("span", { className: "who" },
+      [tag(e.mode === "START_UP" ? "boot" : "app", e.mode)]));
+    head.append(el("span", { className: "sub", textContent: e.request_class }));
+    node.append(head);
+
+    const name = statusName[e.status] || "?";
+    const st = el("div", { className: "big" });
+    st.append(tag(e.status === 1 ? "app" : e.status === 0x7e ? "no" : "hot",
+                  hex(e.status) + " " + name));
+    node.append(st);
+
+    if (Object.keys(e.params || {}).length) {
+      node.append(el("div", { className: "sub", textContent:
+        Object.entries(e.params).map(([k, v]) => k + "=" + v).join("  ") }));
+    }
+
+    [["→ request", e.request, ["REQ_ID", "REQ_LEN"]],
+     ["← response", e.response, ["STATUS", "RSP_LEN"]]].forEach(([lbl, raw, layout]) => {
+      const dec = decode(raw, layout);
+      node.append(el("div", { className: "sub", textContent: lbl }));
+      const row = el("div", { className: "frame" });
+      dec.fields.forEach((f) => {
+        const n = el("span", { className: "fld " + (f.cls || "") });
+        n.append(el("span", { className: "n", textContent: f.n }));
+        n.append(document.createTextNode(
+          f.v.length > 120 ? f.v.slice(0, 120) + " …" : f.v));
+        row.append(n);
+      });
+      node.append(row);
+      const asc = printable(dec.data || []);
+      if (asc) node.append(el("div", { className: "sub" }, [
+        document.createTextNode("ascii: "),
+        el("span", { className: "ascii", textContent: asc })]));
+    });
+
+    node.append(el("div", { className: "sub", textContent:
+      "mode after: " + e.mode_after + "   ·   CHIP_STATUS " + hex(e.chip_status_after) }));
+
+    if (counterpart) {
+      const identical = counterpart.response === e.response;
+      node.append(el("div", { className: "same", textContent: identical
+        ? "identical to the other mode, byte for byte"
+        : "differs from the other mode" }));
+    }
+  }
+
+  function renderTry() {
+    segment($("try-mode"), S.chip_modes.map((m) => [m.name, m.name]),
+      () => tryState.mode, (v) => { tryState.mode = v; });
+
+    const pick = $("try-pick");
+    if (!pick.options.length) {
+      let group = null, optgroup = null;
+      X.filter((e) => e.mode === X[0].mode).forEach(() => {});
+      allKeys.forEach((k) => {
+        const g = k.split(" · ")[0];
+        if (g !== group) {
+          group = g;
+          optgroup = el("optgroup"); optgroup.label = g;
+          pick.append(optgroup);
+        }
+        optgroup.append(el("option", { value: k, textContent: k.split(" · ")[1] }));
+      });
+      pick.onchange = () => { tryState.key = pick.value; renderTry(); };
+    }
+    pick.value = tryState.key;
+
+    const other = S.chip_modes.map((m) => m.name)
+      .find((m) => m !== tryState.mode) || tryState.mode;
+    const a = exchange(tryState.mode, tryState.key);
+    const b = exchange(other, tryState.key);
+    renderPane($("try-main"), a, true, b);
+    renderPane($("try-other"), b, false, a);
+  }
+
   /* ================= WIRE ================= */
   function decode(hexstr, layout) {
     const b = [];
@@ -557,6 +686,8 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
     if (run.length >= 4) out += (out ? "  " : "") + JSON.stringify(run);
     return out;
   }
+  renderTry();
+
   const wireBox = $("wire");
   S.wire_traces.forEach((t) => {
     const p = el("div", { className: "panel" });

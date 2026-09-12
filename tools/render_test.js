@@ -23,6 +23,11 @@ const check = (name, actual, expected) => {
   if (!ok) failures.push(name);
 };
 
+// Mirror the page's hex(): pad to two digits. Writing "0x" + n.toString(16)
+// here passes for 0x7E and silently fails for 0x01, which is how this was
+// caught - by a value that happened to be one digit.
+const hex = (n) => "0x" + n.toString(16).toUpperCase().padStart(2, "0");
+
 const spec = (() => {
   const js = fs.readFileSync(path.join(DOCS, "model_spec.js"), "utf8");
   const sandbox = {};
@@ -133,8 +138,38 @@ dom.window.addEventListener("load", () => {
         (r) => r.action === "MAINTENANCE_REBOOT" && r.maintenance_ena === 0
       );
       check("MAINTENANCE_ENA=0 shows the captured refusal",
-        d.getElementById("r-status").textContent.startsWith(
-          "0x" + row.l2_status.toString(16).toUpperCase()), true);
+        d.getElementById("r-status").textContent.startsWith(hex(row.l2_status)), true);
+    }
+  }
+
+  // the Try-it explorer must actually look requests up in the capture
+  atLeast("exchanges", spec.exchanges.length, 2);
+  const pick = d.getElementById("try-pick");
+  check("request dropdown populated",
+    pick.querySelectorAll("option").length,
+    new Set(spec.exchanges.map((e) => e.group + " · " + e.label)).size);
+  check("dropdown is grouped", pick.querySelectorAll("optgroup").length > 1, true);
+
+  // drive it: choose the request whose answer differs most between modes
+  const gated = spec.exchanges.find((e) => e.status === 0x7e);
+  if (gated) {
+    const key = gated.group + " · " + gated.label;
+    pick.value = key;
+    pick.dispatchEvent(new dom.window.Event("change"));
+    const modeBtn = [...d.querySelectorAll("#try-mode button")]
+      .find((b) => b.textContent === gated.mode);
+    check("mode button for the gated case exists", !!modeBtn, true);
+    if (modeBtn) {
+      modeBtn.click();
+      const shown = d.getElementById("try-main").textContent;
+      check("gated request shows its captured status",
+        shown.includes(hex(gated.status)), true);
+      const other = spec.exchanges.find(
+        (e) => e.mode !== gated.mode && e.group + " · " + e.label === key);
+      if (other) {
+        check("other-mode pane shows the counterpart status",
+          d.getElementById("try-other").textContent.includes(hex(other.status)), true);
+      }
     }
   }
 
