@@ -153,7 +153,7 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
 <body>
 <div class="wrap">
 <header>
-  <h1>TROPIC01 Explorer</h1>
+  <h1>TROPIC01 Explorer <span id="live-badge" class="tag hot" hidden>LIVE</span></h1>
   <div class="sub" id="prov"></div>
 </header>
 
@@ -259,6 +259,25 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
         <select id="try-pick"></select>
       </div>
     </div>
+  </div>
+  <div class="panel" id="live-panel" hidden>
+    <div class="pane-h">
+      <span class="who">Live model attached</span>
+      <span class="sub" id="live-mode"></span>
+    </div>
+    <p class="note" style="margin:0 0 10px">
+      A real <code>model_server</code> is running behind this page. Sending
+      replaces the captured answer with one produced right now — by a chip whose
+      state you are changing as you go. <b>Power off</b> is not a pause: it drops
+      all volatile state, so the session, the buffers and the latched
+      configuration go with it.
+    </p>
+    <div class="act">
+      <button id="live-send">send this request for real</button>
+      <button id="live-power-on">power on</button>
+      <button id="live-power-off">power off</button>
+    </div>
+    <div id="live-out"></div>
   </div>
   <div class="split">
     <div class="panel" id="try-main"></div>
@@ -799,6 +818,116 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
     renderPane($("try-other"), b, false, a);
   }
 
+  /* ================= LIVE MODE ================= */
+  // The published page is static and must stay that way: a browser cannot open
+  // a TCP socket, and model_server listens on whatever machine is running it.
+  // So the page plays back captured bytes - unless tools/serve.py is serving
+  // it, in which case a real model is one fetch away. Everything below is
+  // additive; with no API the page behaves exactly as it does on Pages.
+  const live = { on: false, mode: null };
+
+  // `method` is explicit rather than inferred from whether a body was passed:
+  // inferring it turned the power buttons into silent GETs that 404'd, and the
+  // only visible symptom was a button that did nothing.
+  async function api(path, method, body) {
+    const response = await fetch("api/" + path, method === "POST"
+      ? { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body || {}) }
+      : undefined);
+    if (!response.ok) throw new Error("api/" + path + " -> " + response.status);
+    return response.json();
+  }
+
+  function showLive(health) {
+    live.on = true;
+    live.mode = health.mode;
+    live.powered = health.powered;
+    $("live-badge").hidden = false;
+    $("live-panel").hidden = false;
+    const where = $("live-mode");
+    where.innerHTML = "";
+    if (health.powered) {
+      where.append(tag(health.mode === "START_UP" ? "boot" : "app", health.mode));
+      where.append(document.createTextNode(
+        "  CHIP_STATUS " + hex(health.chip_status)));
+    } else {
+      where.append(tag("no", "powered off"));
+    }
+    $("live-send").disabled = !health.powered;
+    $("live-power-on").disabled = health.powered;
+    $("live-power-off").disabled = !health.powered;
+  }
+
+  function renderLiveResult(result, error) {
+    const out = $("live-out");
+    out.innerHTML = "";
+    if (error) {
+      out.append(el("div", { className: "sub vol", textContent: error }));
+      return;
+    }
+    const dec = decode(result.response, ["STATUS", "RSP_LEN"]);
+    const name = statusName[dec.bytes[0]] || "?";
+    out.append(el("div", { className: "big" },
+      [tag(dec.bytes[0] === 1 ? "app" : "hot", hex(dec.bytes[0]) + " " + name)]));
+    const row = el("div", { className: "frame" });
+    dec.fields.forEach((f) => {
+      const n = el("span", { className: "fld " + (f.cls || "") });
+      n.append(el("span", { className: "n", textContent: f.n }));
+      n.append(document.createTextNode(
+        f.v.length > 120 ? f.v.slice(0, 120) + " …" : f.v));
+      row.append(n);
+    });
+    out.append(row);
+    const asc = printable(dec.data || []);
+    if (asc) out.append(el("div", { className: "sub" }, [
+      document.createTextNode("ascii: "),
+      el("span", { className: "ascii", textContent: asc })]));
+    out.append(el("div", { className: "sub", textContent:
+      "CHIP_STATUS after: " + hex(result.chip_status_after) }));
+
+    // The captured answer for the same request, for comparison. Agreement is
+    // the interesting result: it means the capture still describes the model.
+    const captured = exchange(st.mode, tryState.key);
+    if (captured) {
+      const same = captured.response === result.response;
+      out.append(el("div", { className: same ? "same" : "sub vol", textContent: same
+        ? "identical to the captured answer — the capture is still accurate"
+        : "differs from the captured answer: the live chip's state has moved on, "
+          + "or the model has changed since the capture" }));
+    }
+  }
+
+  async function probeLive() {
+    try {
+      showLive(await api("health", "GET"));
+    } catch (e) {
+      return;  // static hosting, or file:// - the normal case
+    }
+    $("live-send").onclick = async () => {
+      const e = exchange(st.mode, tryState.key);
+      if (!e) { renderLiveResult(null, "nothing captured to send for this mode"); return; }
+      $("live-send").disabled = true;
+      try {
+        renderLiveResult(await api("l2", "POST", { request: e.request }));
+        showLive(await api("health", "GET"));
+      } catch (err) {
+        renderLiveResult(null, String(err));
+      } finally {
+        $("live-send").disabled = !live.powered;
+      }
+    };
+    const power = (on) => async () => {
+      try {
+        showLive(await api(on ? "power_on" : "power_off", "POST"));
+        $("live-out").innerHTML = "";
+      } catch (err) {
+        renderLiveResult(null, String(err));
+      }
+    };
+    $("live-power-on").onclick = power(true);
+    $("live-power-off").onclick = power(false);
+  }
+
   /* ================= WIRE ================= */
   function decode(hexstr, layout) {
     const b = [];
@@ -827,6 +956,7 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
     return out;
   }
   renderTry();
+  probeLive();
 
   const wireBox = $("wire");
   S.wire_traces.forEach((t) => {

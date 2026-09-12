@@ -47,7 +47,7 @@ pick_python() {
   return 1
 }
 
-say "== 1/2  docs/model_spec.js vs the model"
+say "== 1/3  docs/model_spec.js vs the model"
 if [ ! -d "$TS_TVL/tvl" ]; then
   say "   SKIPPED - no ts-tvl checkout at '$TS_TVL'."
   say "   Pass one as an argument or set TS_TVL."
@@ -73,11 +73,21 @@ else
 fi
 
 say ""
-say "== 2/2  the page renders the spec"
+say "== 2/3  the page renders the spec"
 if node -e 'require("jsdom")' 2>/dev/null; then
   node tools/render_test.js || fail=1
 else
   say "   SKIPPED - jsdom not installed. Run: npm install --no-save jsdom"
+fi
+
+say ""
+say "== 3/3  live mode (only with a bridge running)"
+if [ -n "${EXPLORER_LIVE_URL:-}" ]; then
+  node tools/live_test.js "$EXPLORER_LIVE_URL" || fail=1
+else
+  say "   SKIPPED - set EXPLORER_LIVE_URL to check it. Start one with:"
+  say "     PYTHONPATH=<ts-tvl> python3 tools/serve.py --port 8800"
+  say "     EXPLORER_LIVE_URL=http://127.0.0.1:8800 tools/check.sh"
 fi
 
 say ""

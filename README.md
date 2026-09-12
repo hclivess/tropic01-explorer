@@ -98,6 +98,43 @@ docs/model_spec.js        ← generated, never edited
 docs/index.html           ← renders it, computes nothing
 ```
 
+## Live mode — a real model behind the page
+
+The published page is static and must be: a browser cannot open a raw TCP
+socket, and `model_server` listens on whatever machine is running it, not on
+GitHub's. So the page plays back captured bytes.
+
+`tools/serve.py` is the other half. It starts the **real** `model_server` over
+TCP, connects ts-tvl's own `TCPTropicProtocol` to it, and serves the same page
+with a small HTTP API in front:
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install -e /path/to/ts-tvl
+PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py
+# → http://127.0.0.1:8800
+```
+
+The page probes for that API at load. If it answers, a **LIVE** badge appears and
+the Try-it tab grows three buttons: *send this request for real*, *power on* and
+*power off*. Sending puts the bytes through a model that is running now, and
+compares the answer with the captured one — agreement means the capture still
+describes the model.
+
+Nothing about the protocol is reimplemented in the bridge. `Host` binds to
+`TCPTropicProtocol` exactly as it binds to `Tropic01Model`, because the TCP
+client implements the same interface the model does; `serve.py` only moves bytes
+between HTTP and that object. It also picks a free port rather than the default
+28992, which is shared with ctest's `model_runner` and ts-tvl's own TCP tests and
+whose collisions do not error — they silently serve the wrong client.
+
+**Power off is not a pause.** It is the model's `power_off`, which drops all
+volatile state: the session, the buffers, and the latched configuration.
+
+```bash
+node tools/live_test.js http://127.0.0.1:8800   # asserts the live half
+EXPLORER_LIVE_URL=http://127.0.0.1:8800 tools/check.sh   # all three gates
+```
+
 ## Regenerating
 
 ```bash
