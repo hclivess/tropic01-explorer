@@ -1053,6 +1053,364 @@ window.MODEL_SPEC = {
    "origin": "application"
   }
  ],
+ "constants": {
+  "enums": [
+   {
+    "doc": "",
+    "flag": true,
+    "members": [
+     {
+      "bits": 1,
+      "doc": "TROPIC01 is ready to receive L2 Request frame or L3 Command packet",
+      "name": "READY",
+      "value": 1
+     },
+     {
+      "bits": 2,
+      "doc": "TROPIC01 is in Alarm mode",
+      "name": "ALARM",
+      "value": 2
+     },
+     {
+      "bits": 3,
+      "doc": "TROPIC01 is in Start-up mode",
+      "name": "START",
+      "value": 4
+     },
+     {
+      "bits": 4,
+      "doc": "TROPIC01 is in boot hold mode",
+      "name": "BOOT_HOLD",
+      "value": 8
+     }
+    ],
+    "name": "L1ChipStatusFlag"
+   },
+   {
+    "doc": "",
+    "flag": false,
+    "members": [
+     {
+      "bits": 8,
+      "doc": "Request to read L2 Response frame",
+      "name": "GET_RESP",
+      "value": 170
+     }
+    ],
+    "name": "L2IdFieldEnum"
+   },
+   {
+    "doc": "Valid STATUS field values",
+    "flag": false,
+    "members": [
+     {
+      "bits": 1,
+      "doc": "TROPIC01 has received, checked for CRC validity, and processed the L2 Request frame.",
+      "name": "REQ_OK",
+      "value": 1
+     },
+     {
+      "bits": 2,
+      "doc": "TROPIC01 has processed the L3 Command packet.",
+      "name": "RES_OK",
+      "value": 2
+     },
+     {
+      "bits": 2,
+      "doc": "Similar to REQ_OK",
+      "name": "REQ_CONT",
+      "value": 3
+     },
+     {
+      "bits": 3,
+      "doc": "Similar to REQ_CONT when splitted result is transmitted from TROPIC01 to the Host MCU.",
+      "name": "RES_CONT",
+      "value": 4
+     },
+     {
+      "bits": 7,
+      "doc": "The L2 Request frame is disabled and cannot be executed.",
+      "name": "RESP_DISABLED",
+      "value": 120
+     },
+     {
+      "bits": 7,
+      "doc": "Secure Channel Handshake failed, and Secure Channel Session is not established",
+      "name": "HSK_ERR",
+      "value": 121
+     },
+     {
+      "bits": 7,
+      "doc": "TROPIC01 is not in Secure Channel Mode, and Host MCU has sent Encrypted_Cmd_Req (L2 Request frame).",
+      "name": "NO_SESSION",
+      "value": 122
+     },
+     {
+      "bits": 7,
+      "doc": "Invalid L3 Command packet Authentication Tag.",
+      "name": "TAG_ERR",
+      "value": 123
+     },
+     {
+      "bits": 7,
+      "doc": "Incorrect CRC-16 checksum.",
+      "name": "CRC_ERR",
+      "value": 124
+     },
+     {
+      "bits": 7,
+      "doc": "Unknown L2 Request frame type (REQ_ID) received.",
+      "name": "UNKNOWN_REQ",
+      "value": 126
+     },
+     {
+      "bits": 7,
+      "doc": "Generic error (cannot be classified under other status codes)",
+      "name": "GEN_ERR",
+      "value": 127
+     },
+     {
+      "bits": 8,
+      "doc": "No L2 Response frame available.",
+      "name": "NO_RESP",
+      "value": 255
+     }
+    ],
+    "name": "L2StatusEnum"
+   },
+   {
+    "doc": "",
+    "flag": false,
+    "members": [
+     {
+      "bits": 8,
+      "doc": "Command successfully executed.",
+      "name": "OK",
+      "value": 195
+     },
+     {
+      "bits": 6,
+      "doc": "Generic error",
+      "name": "FAIL",
+      "value": 60
+     },
+     {
+      "bits": 1,
+      "doc": "Insufficient User Access Privileges",
+      "name": "UNAUTHORIZED",
+      "value": 1
+     },
+     {
+      "bits": 2,
+      "doc": "Unknown L3 Command packet (Invalid CMD_ID)",
+      "name": "INVALID_CMD",
+      "value": 2
+     }
+    ],
+    "name": "L3ResultFieldEnum"
+   }
+  ],
+  "fw_version_examples": [
+   {
+    "encoded": "00000000",
+    "input": "0.0.0",
+    "with_flag": "00000080"
+   },
+   {
+    "encoded": "00000201",
+    "input": "1.2.0",
+    "with_flag": "00000281"
+   },
+   {
+    "encoded": "00000002",
+    "input": "2.0.0",
+    "with_flag": "00000082"
+   },
+   {
+    "encoded": "00010002",
+    "input": "2.0.1",
+    "with_flag": "00010082"
+   },
+   {
+    "encoded": "00ffffff",
+    "input": "255.255.255",
+    "with_flag": "00ffffff"
+   }
+  ],
+  "values": [
+   {
+    "doc": "",
+    "kind": "int",
+    "name": "ALL_FLAGS_MASK",
+    "value": 15
+   },
+   {
+    "doc": "BOOTLOADER_RISCV_FW_VERSION_STR encoded as 4 bytes, without the maintenance flag - `with_maintenance_flag` adds it when reporting.",
+    "hex": "00010002",
+    "int_be": 65538,
+    "int_le": 33554688,
+    "kind": "bytes",
+    "length": 4,
+    "name": "BOOTLOADER_RISCV_FW_VERSION_DEFAULT"
+   },
+   {
+    "doc": "Version of the immutable RISC-V FW (bootloader) the model emulates. 2.0.1 is the bootloader shipped on ACAB silicon. The host uses this number to decide which FW bank header layout to expect, so it is not cosmetic: libtropic maps 1.0.1 to the 20-byte `lt_header_boot_v1_t` and 2.0.1 to the 52-byte `lt_header_boot_v2_t`.",
+    "kind": "str",
+    "name": "BOOTLOADER_RISCV_FW_VERSION_STR",
+    "text": "2.0.1"
+   },
+   {
+    "doc": "Length of a transmitted certificate block",
+    "kind": "int",
+    "name": "CERTIFICATE_BLOCK_SIZE",
+    "value": 128
+   },
+   {
+    "doc": "Length of a X509 certificate",
+    "kind": "int",
+    "name": "CERTIFICATE_SIZE",
+    "value": 3840
+   },
+   {
+    "doc": "Length of the Chip ID",
+    "kind": "int",
+    "name": "CHIP_ID_SIZE",
+    "value": 128
+   },
+   {
+    "doc": "Size of chunks sent by the model",
+    "kind": "int",
+    "name": "CHUNK_SIZE",
+    "value": 128
+   },
+   {
+    "doc": "Length of a X25519 Diffie-Hellman public key",
+    "kind": "int",
+    "name": "DH_LEN",
+    "value": 32
+   },
+   {
+    "doc": "Maximum size of a L3 packet after encryption",
+    "kind": "int",
+    "name": "ENCRYPTED_PACKET_MAX_SIZE",
+    "value": 4114
+   },
+   {
+    "doc": "Length of the tag added to the encrypted data after AESGCM encryption",
+    "kind": "int",
+    "name": "ENCRYPTION_TAG_LEN",
+    "value": 16
+   },
+   {
+    "doc": "Set in the MSB of a reported FW version word while TROPIC01 executes the immutable FW (bootloader), i.e. while the chip is in Start-up mode. The mutable FW is not loaded in that mode, so the version TROPIC01 reports is the bootloader's own; the flag is what lets the host tell the two apart.",
+    "kind": "int",
+    "name": "FW_VERSION_MAINTENANCE_FLAG",
+    "value": 2147483648
+   },
+   {
+    "doc": "Maximum size of the DATA field of a L2 request or response",
+    "kind": "int",
+    "name": "MAX_L2_FRAME_DATA_LEN",
+    "value": 252
+   },
+   {
+    "doc": "Maximum size of a L2 request or response",
+    "kind": "int",
+    "name": "MAX_L2_FRAME_LEN",
+    "value": 256
+   },
+   {
+    "doc": "Minimum size of the DATA field of a L2 request or response",
+    "kind": "int",
+    "name": "MIN_L2_FRAME_DATA_LEN",
+    "value": 0
+   },
+   {
+    "doc": "Minimum size of a L2 request or response",
+    "kind": "int",
+    "name": "MIN_L2_FRAME_LEN",
+    "value": 4
+   },
+   {
+    "doc": "L1 level padding byte value",
+    "hex": "00",
+    "int_be": 0,
+    "int_le": 0,
+    "kind": "bytes",
+    "length": 1,
+    "name": "PADDING_BYTE"
+   },
+   {
+    "doc": "RISCV_FW_VERSION_STR encoded as 4 bytes.",
+    "hex": "00000002",
+    "int_be": 2,
+    "int_le": 33554432,
+    "kind": "bytes",
+    "length": 4,
+    "name": "RISCV_FW_VERSION_DEFAULT"
+   },
+   {
+    "doc": "Length of the RISCV fw version",
+    "kind": "int",
+    "name": "RISCV_FW_VERSION_SIZE",
+    "value": 4
+   },
+   {
+    "doc": "RISCV FW version the model's behavior corresponds to (ts-tr01-app). This is the FW version that was latest available when the model was released. Update this value when releasing a new version targeting a newer FW.",
+    "kind": "str",
+    "name": "RISCV_FW_VERSION_STR",
+    "text": "2.0.0"
+   },
+   {
+    "doc": "SPECT_FW_VERSION_STR encoded as 4 bytes.",
+    "hex": "00000201",
+    "int_be": 513,
+    "int_le": 16908288,
+    "kind": "bytes",
+    "length": 4,
+    "name": "SPECT_FW_VERSION_DEFAULT"
+   },
+   {
+    "doc": "Placeholder SPECT FW version reported in Start-up mode (0x80000000). The SPECT core runs no firmware at all before the mutable FW is loaded, so there is no version to report; the bootloader answers with this constant instead.",
+    "hex": "00000080",
+    "int_be": 128,
+    "int_le": 2147483648,
+    "kind": "bytes",
+    "length": 4,
+    "name": "SPECT_FW_VERSION_DUMMY"
+   },
+   {
+    "doc": "Length of the SPECT ROM ID",
+    "kind": "int",
+    "name": "SPECT_FW_VERSION_SIZE",
+    "value": 4
+   },
+   {
+    "doc": "SPECT FW version the model's behavior corresponds to. This is the SPECT version that was latest available when the model was released. Update this value when releasing a new version targeting a newer SPECT.",
+    "kind": "str",
+    "name": "SPECT_FW_VERSION_STR",
+    "text": "1.2.0"
+   },
+   {
+    "doc": "Number of slots for X25519 Host Public Keys",
+    "kind": "int",
+    "name": "S_HI_PUB_NB_SLOTS",
+    "value": 4
+   },
+   {
+    "doc": "Encode a firmware version string into 4 bytes. Accepts git-describe-style version strings: \"2.0.0\" \u2014 clean release \"2.0.0-5\" \u2014 5 commits after tag \"2.0.0-5-gabcdef\" \u2014 with git hash (ignored) \"2.0.0-dirty\" \u2014 uncommitted changes \"2.0.0-5-gabcdef-dirty\" Format: little-endian encoding of (major << 24)",
+    "kind": "function",
+    "name": "encode_fw_version",
+    "signature": "(version: str) -> bytes"
+   },
+   {
+    "doc": "Set FW_VERSION_MAINTENANCE_FLAG on an encoded 4-byte FW version. Args: version (bytes): FW version as encoded by `encode_fw_version` Returns: the same version with its most significant bit set",
+    "kind": "function",
+    "name": "with_maintenance_flag",
+    "signature": "(version: bytes) -> bytes"
+   }
+  ]
+ },
  "examples": [
   {
    "any_volatile": false,
@@ -1182,6 +1540,11 @@ window.MODEL_SPEC = {
  "exchanges": [
   {
    "chip_status_after": 5,
+   "decoded": {
+    "kind": "certificate",
+    "note": "one 128-byte block of the certificate store",
+    "size": 128
+   },
    "group": "Get_Info",
    "label": "X.509 certificate, block 0",
    "mode": "START_UP",
@@ -1197,6 +1560,11 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 5,
+   "decoded": {
+    "kind": "certificate",
+    "note": "one 128-byte block of the certificate store",
+    "size": 128
+   },
    "group": "Get_Info",
    "label": "X.509 certificate, block 29 (last)",
    "mode": "START_UP",
@@ -1212,6 +1580,7 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 5,
+   "decoded": null,
    "group": "Get_Info",
    "label": "X.509 certificate, block 30 (out of range)",
    "mode": "START_UP",
@@ -1227,6 +1596,16 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 5,
+   "decoded": {
+    "ascii": [
+     {
+      "offset": 0,
+      "text": "chip_id"
+     }
+    ],
+    "kind": "chip_id",
+    "size": 128
+   },
    "group": "Get_Info",
    "label": "chip ID",
    "mode": "START_UP",
@@ -1241,6 +1620,17 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 5,
+   "decoded": {
+    "commits": 0,
+    "dirty": false,
+    "kind": "fw_version",
+    "maintenance_flag": true,
+    "major": 2,
+    "minor": 0,
+    "patch": 1,
+    "version": "2.0.1",
+    "word": "0x82000100"
+   },
    "group": "Get_Info",
    "label": "RISC-V FW version",
    "mode": "START_UP",
@@ -1255,6 +1645,17 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 5,
+   "decoded": {
+    "commits": 0,
+    "dirty": false,
+    "kind": "fw_version",
+    "maintenance_flag": true,
+    "major": 0,
+    "minor": 0,
+    "patch": 0,
+    "version": "0.0.0",
+    "word": "0x80000000"
+   },
    "group": "Get_Info",
    "label": "SPECT FW version",
    "mode": "START_UP",
@@ -1269,6 +1670,67 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 5,
+   "decoded": {
+    "empty": false,
+    "fields": [
+     {
+      "decoded": "1",
+      "doc": "",
+      "hex": "0100",
+      "name": "type",
+      "offset": 0
+     },
+     {
+      "decoded": "0",
+      "doc": "",
+      "hex": "00",
+      "name": "_padding",
+      "offset": 2
+     },
+     {
+      "decoded": "1",
+      "doc": "",
+      "hex": "01",
+      "name": "header_version",
+      "offset": 3
+     },
+     {
+      "decoded": "2.0.0",
+      "doc": "",
+      "hex": "00000002",
+      "name": "version",
+      "offset": 4
+     },
+     {
+      "decoded": "0",
+      "doc": "",
+      "hex": "00000000",
+      "name": "size",
+      "offset": 8
+     },
+     {
+      "decoded": "0",
+      "doc": "",
+      "hex": "00000000",
+      "name": "git_hash",
+      "offset": 12
+     },
+     {
+      "doc": "",
+      "hex": "0000000000000000000000000000000000000000000000000000000000000000",
+      "name": "hash",
+      "offset": 16
+     },
+     {
+      "decoded": "0",
+      "doc": "",
+      "hex": "00000000",
+      "name": "pair_version",
+      "offset": 48
+     }
+    ],
+    "kind": "fw_bank"
+   },
    "group": "Get_Info",
    "label": "FW bank FW1",
    "mode": "START_UP",
@@ -1284,6 +1746,7 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 5,
+   "decoded": null,
    "group": "Get_Info",
    "label": "FW bank FW2",
    "mode": "START_UP",
@@ -1299,6 +1762,67 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 5,
+   "decoded": {
+    "empty": false,
+    "fields": [
+     {
+      "decoded": "2",
+      "doc": "",
+      "hex": "0200",
+      "name": "type",
+      "offset": 0
+     },
+     {
+      "decoded": "0",
+      "doc": "",
+      "hex": "00",
+      "name": "_padding",
+      "offset": 2
+     },
+     {
+      "decoded": "1",
+      "doc": "",
+      "hex": "01",
+      "name": "header_version",
+      "offset": 3
+     },
+     {
+      "decoded": "1.2.0",
+      "doc": "",
+      "hex": "00000201",
+      "name": "version",
+      "offset": 4
+     },
+     {
+      "decoded": "0",
+      "doc": "",
+      "hex": "00000000",
+      "name": "size",
+      "offset": 8
+     },
+     {
+      "decoded": "0",
+      "doc": "",
+      "hex": "00000000",
+      "name": "git_hash",
+      "offset": 12
+     },
+     {
+      "doc": "",
+      "hex": "0000000000000000000000000000000000000000000000000000000000000000",
+      "name": "hash",
+      "offset": 16
+     },
+     {
+      "decoded": "0",
+      "doc": "",
+      "hex": "00000000",
+      "name": "pair_version",
+      "offset": 48
+     }
+    ],
+    "kind": "fw_bank"
+   },
    "group": "Get_Info",
    "label": "FW bank SPECT1",
    "mode": "START_UP",
@@ -1314,6 +1838,7 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 5,
+   "decoded": null,
    "group": "Get_Info",
    "label": "FW bank SPECT2",
    "mode": "START_UP",
@@ -1329,6 +1854,7 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 5,
+   "decoded": null,
    "group": "Get_Info",
    "label": "unknown OBJECT_ID 0x55",
    "mode": "START_UP",
@@ -1343,6 +1869,7 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 5,
+   "decoded": null,
    "group": "Handshake",
    "label": "pairing key slot 0 (written)",
    "mode": "START_UP",
@@ -1357,6 +1884,7 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 5,
+   "decoded": null,
    "group": "Handshake",
    "label": "pairing key slot 3 (blank)",
    "mode": "START_UP",
@@ -1371,6 +1899,7 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 5,
+   "decoded": null,
    "group": "Session",
    "label": "Encrypted_Session_Abt",
    "mode": "START_UP",
@@ -1383,6 +1912,7 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 5,
+   "decoded": null,
    "group": "Transport",
    "label": "Resend_Req",
    "mode": "START_UP",
@@ -1395,6 +1925,7 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 5,
+   "decoded": null,
    "group": "Transport",
    "label": "Get_Log_Req",
    "mode": "START_UP",
@@ -1407,6 +1938,7 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 5,
+   "decoded": null,
    "group": "Sleep",
    "label": "SLEEP_MODE",
    "mode": "START_UP",
@@ -1421,6 +1953,7 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 5,
+   "decoded": null,
    "group": "Sleep",
    "label": "invalid kind 0x77",
    "mode": "START_UP",
@@ -1435,6 +1968,7 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 1,
+   "decoded": null,
    "group": "Startup",
    "label": "REBOOT",
    "mode": "START_UP",
@@ -1449,6 +1983,7 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 5,
+   "decoded": null,
    "group": "Startup",
    "label": "MAINTENANCE_REBOOT",
    "mode": "START_UP",
@@ -1463,6 +1998,7 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 5,
+   "decoded": null,
    "group": "Startup",
    "label": "invalid id 0x99",
    "mode": "START_UP",
@@ -1477,6 +2013,11 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 1,
+   "decoded": {
+    "kind": "certificate",
+    "note": "one 128-byte block of the certificate store",
+    "size": 128
+   },
    "group": "Get_Info",
    "label": "X.509 certificate, block 0",
    "mode": "APPLICATION",
@@ -1492,6 +2033,11 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 1,
+   "decoded": {
+    "kind": "certificate",
+    "note": "one 128-byte block of the certificate store",
+    "size": 128
+   },
    "group": "Get_Info",
    "label": "X.509 certificate, block 29 (last)",
    "mode": "APPLICATION",
@@ -1507,6 +2053,7 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 1,
+   "decoded": null,
    "group": "Get_Info",
    "label": "X.509 certificate, block 30 (out of range)",
    "mode": "APPLICATION",
@@ -1522,6 +2069,16 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 1,
+   "decoded": {
+    "ascii": [
+     {
+      "offset": 0,
+      "text": "chip_id"
+     }
+    ],
+    "kind": "chip_id",
+    "size": 128
+   },
    "group": "Get_Info",
    "label": "chip ID",
    "mode": "APPLICATION",
@@ -1536,6 +2093,17 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 1,
+   "decoded": {
+    "commits": 0,
+    "dirty": false,
+    "kind": "fw_version",
+    "maintenance_flag": false,
+    "major": 2,
+    "minor": 0,
+    "patch": 0,
+    "version": "2.0.0",
+    "word": "0x02000000"
+   },
    "group": "Get_Info",
    "label": "RISC-V FW version",
    "mode": "APPLICATION",
@@ -1550,6 +2118,17 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 1,
+   "decoded": {
+    "commits": 0,
+    "dirty": false,
+    "kind": "fw_version",
+    "maintenance_flag": false,
+    "major": 1,
+    "minor": 2,
+    "patch": 0,
+    "version": "1.2.0",
+    "word": "0x01020000"
+   },
    "group": "Get_Info",
    "label": "SPECT FW version",
    "mode": "APPLICATION",
@@ -1564,6 +2143,7 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 1,
+   "decoded": null,
    "group": "Get_Info",
    "label": "FW bank FW1",
    "mode": "APPLICATION",
@@ -1579,6 +2159,7 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 1,
+   "decoded": null,
    "group": "Get_Info",
    "label": "FW bank FW2",
    "mode": "APPLICATION",
@@ -1594,6 +2175,7 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 1,
+   "decoded": null,
    "group": "Get_Info",
    "label": "FW bank SPECT1",
    "mode": "APPLICATION",
@@ -1609,6 +2191,7 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 1,
+   "decoded": null,
    "group": "Get_Info",
    "label": "FW bank SPECT2",
    "mode": "APPLICATION",
@@ -1624,6 +2207,7 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 1,
+   "decoded": null,
    "group": "Get_Info",
    "label": "unknown OBJECT_ID 0x55",
    "mode": "APPLICATION",
@@ -1638,6 +2222,7 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 1,
+   "decoded": null,
    "group": "Handshake",
    "label": "pairing key slot 0 (written)",
    "mode": "APPLICATION",
@@ -1652,6 +2237,7 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 1,
+   "decoded": null,
    "group": "Handshake",
    "label": "pairing key slot 3 (blank)",
    "mode": "APPLICATION",
@@ -1666,6 +2252,7 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 1,
+   "decoded": null,
    "group": "Session",
    "label": "Encrypted_Session_Abt",
    "mode": "APPLICATION",
@@ -1678,6 +2265,7 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 1,
+   "decoded": null,
    "group": "Transport",
    "label": "Resend_Req",
    "mode": "APPLICATION",
@@ -1690,6 +2278,7 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 1,
+   "decoded": null,
    "group": "Transport",
    "label": "Get_Log_Req",
    "mode": "APPLICATION",
@@ -1702,6 +2291,7 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 1,
+   "decoded": null,
    "group": "Sleep",
    "label": "SLEEP_MODE",
    "mode": "APPLICATION",
@@ -1716,6 +2306,7 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 1,
+   "decoded": null,
    "group": "Sleep",
    "label": "invalid kind 0x77",
    "mode": "APPLICATION",
@@ -1730,6 +2321,7 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 1,
+   "decoded": null,
    "group": "Startup",
    "label": "REBOOT",
    "mode": "APPLICATION",
@@ -1744,6 +2336,7 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 5,
+   "decoded": null,
    "group": "Startup",
    "label": "MAINTENANCE_REBOOT",
    "mode": "APPLICATION",
@@ -1758,6 +2351,7 @@ window.MODEL_SPEC = {
   },
   {
    "chip_status_after": 1,
+   "decoded": null,
    "group": "Startup",
    "label": "invalid id 0x99",
    "mode": "APPLICATION",

@@ -33,6 +33,7 @@ import pathlib
 import re
 import subprocess
 import sys
+import types
 from typing import Any, Dict, List, Optional
 
 from tvl.api.l2_api import (
@@ -500,6 +501,127 @@ def wire_traces() -> List[Dict[str, Any]]:
     return traces
 
 
+def decode_fw_version(raw: bytes) -> Dict[str, Any]:
+    """Invert `encode_fw_version`, which packs, little-endian,
+
+        (major << 24) | (minor << 16) | (patch << 8) | (commits << 1) | dirty
+
+    with bit 31 doubling as FW_VERSION_MAINTENANCE_FLAG - which is why the major
+    byte is masked to 7 bits when the flag is set.
+
+    This is the one inverse written by hand in this file, so it is checked
+    against the real encoder at generation time (`_check_version_roundtrip`)
+    rather than trusted.
+    """
+    from tvl.constants import FW_VERSION_MAINTENANCE_FLAG
+
+    word = int.from_bytes(raw, "little")
+    flag = bool(word & FW_VERSION_MAINTENANCE_FLAG)
+    major, minor, patch = (word >> 24) & 0x7F, (word >> 16) & 0xFF, (word >> 8) & 0xFF
+    commits, dirty = (word >> 1) & 0x7F, bool(word & 1)
+    text = f"{major}.{minor}.{patch}"
+    if commits:
+        text += f"-{commits}"
+    if dirty:
+        text += "-dirty"
+    return {
+        "kind": "fw_version",
+        "version": text,
+        "major": major, "minor": minor, "patch": patch,
+        "commits": commits, "dirty": dirty,
+        "maintenance_flag": flag,
+        "word": f"{word:#010x}",
+    }
+
+
+def _check_version_roundtrip() -> None:
+    """decode(encode(v)) == v, and the one place that is provably impossible.
+
+    FW_VERSION_MAINTENANCE_FLAG is `1 << 31`, which is bit 7 of the *major
+    version byte*. So the flag and a major version of 128 or more occupy the
+    same bit: `with_maintenance_flag()` is a no-op on such a version, and no
+    reader can tell the two apart. libtropic has the same ambiguity - it reads
+    the major byte as `v[3] & 0x7f` unconditionally.
+
+    Round-tripping is therefore asserted for major <= 127, and the ambiguity is
+    asserted explicitly for major >= 128, so that a change to either the
+    encoding or the flag makes this fail rather than pass quietly.
+    """
+    from tvl import constants as C
+
+    for text in [
+        C.RISCV_FW_VERSION_STR,
+        C.SPECT_FW_VERSION_STR,
+        C.BOOTLOADER_RISCV_FW_VERSION_STR,
+        "0.0.0", "1.2.3", "7.8.9-5", "2.0.1-3-dirty", "127.255.255",
+    ]:
+        encoded = C.encode_fw_version(text)
+        for flagged in (encoded, C.with_maintenance_flag(encoded)):
+            got = decode_fw_version(flagged)["version"]
+            if got != text:
+                raise SystemExit(
+                    f"decode_fw_version disagrees with encode_fw_version: "
+                    f"{text!r} -> {flagged.hex()} -> {got!r}. The hand-written "
+                    f"inverse in this file no longer matches the model."
+                )
+
+    for text in ("128.0.0", "255.255.255"):
+        encoded = C.encode_fw_version(text)
+        if C.with_maintenance_flag(encoded) != encoded:
+            raise SystemExit(
+                f"the maintenance flag no longer collides with major >= 128 "
+                f"({text}) - the encoding or the flag changed, and the note in "
+                f"SPEC_GAPS about this ambiguity needs revisiting."
+            )
+
+
+def decode_payload(object_id: Optional[int], payload: bytes) -> Optional[Dict[str, Any]]:
+    """What a Get_Info payload actually means, worked out in Python.
+
+    The page renders this; it does not compute it. Layouts come from the model
+    (`_HEADER_STRUCT` via `fw_bank_layout()`), not from a copy kept here.
+    """
+    from tvl.api.l2_api import TsL2GetInfoRequest
+
+    oid = TsL2GetInfoRequest.ObjectIdEnum
+    if not payload or object_id is None:
+        return None
+
+    if object_id in (oid.RISCV_FW_VERSION, oid.SPECT_FW_VERSION) and len(payload) == 4:
+        return decode_fw_version(payload)
+
+    if object_id == oid.FW_BANK:
+        layout = fw_bank_layout()
+        if len(payload) != layout["header_size"]:
+            return {"kind": "fw_bank", "empty": True,
+                    "note": f"{len(payload)} bytes - an empty bank reports none"}
+        fields = []
+        for field in layout["fields"]:
+            chunk = payload[field["offset"]: field["offset"] + field["size"]]
+            entry = {
+                "name": field["name"], "offset": field["offset"],
+                "hex": chunk.hex(), "doc": field["doc"],
+            }
+            if field["name"] == "version" and len(chunk) == 4:
+                entry["decoded"] = decode_fw_version(chunk)["version"]
+            elif field["size"] <= 4:
+                entry["decoded"] = str(int.from_bytes(chunk, "little"))
+            fields.append(entry)
+        return {"kind": "fw_bank", "empty": False, "fields": fields}
+
+    if object_id == oid.CHIP_ID:
+        runs = [
+            {"offset": m.start(), "text": m.group().decode()}
+            for m in re.finditer(rb"[ -~]{4,}", payload)
+        ]
+        return {"kind": "chip_id", "size": len(payload), "ascii": runs}
+
+    if object_id == oid.X509_CERTIFICATE:
+        return {"kind": "certificate", "size": len(payload),
+                "note": "one 128-byte block of the certificate store"}
+    return None
+
+
 def exchanges() -> List[Dict[str, Any]]:
     """Every request worth sending, in every mode, actually sent.
 
@@ -596,8 +718,14 @@ def exchanges() -> List[Dict[str, Any]]:
             group, label, params, request = cases(host)[index]
             raw_request = request.to_bytes()
             raw_response = bytes(host.send_request(raw_request))
+            payload = raw_response[2:-2] if len(raw_response) >= 4 else b""
+            object_id = getattr(request, "object_id", None)
             out.append(
                 {
+                    "decoded": decode_payload(
+                        int(object_id.value) if object_id is not None else None,
+                        payload,
+                    ),
                     "mode": mode.name,
                     "group": group,
                     "label": label,
@@ -891,6 +1019,132 @@ def _example_title(source: str) -> Optional[str]:
     return None
 
 
+def constants() -> Dict[str, Any]:
+    """Everything `tvl.constants` exports, introspected.
+
+    Nothing here is a list of names maintained by hand: the module is walked,
+    each public name classified by what it actually is, and the docstrings
+    recovered from source because Python discards the string literals that
+    document module-level assignments. Add a constant to ts-tvl and it appears.
+    """
+    import enum as enum_mod
+
+    from tvl import constants as C
+
+    docs = module_level_docs(C)
+    enum_docs = attribute_docs(C)
+
+    enums: List[Dict[str, Any]] = []
+    values: List[Dict[str, Any]] = []
+
+    for name in sorted(dir(C)):
+        if name.startswith("_"):
+            continue
+        value = getattr(C, name)
+        # Skip things merely imported into the namespace (re, IntFlag, the
+        # HexReprIntEnum base) rather than defined by this module.
+        module = getattr(value, "__module__", None)
+        if isinstance(value, types.ModuleType):
+            continue
+        if isinstance(value, type) and module != C.__name__:
+            continue
+        if callable(value) and not isinstance(value, type) and module != C.__name__:
+            continue
+
+        if isinstance(value, type) and issubclass(value, enum_mod.Enum):
+            enums.append(
+                {
+                    "name": name,
+                    "flag": issubclass(value, enum_mod.IntFlag),
+                    "doc": " ".join((value.__doc__ or "").split())
+                    if (value.__doc__ or "").strip() != "An enumeration."
+                    else "",
+                    "members": [
+                        {
+                            "name": member.name,
+                            "value": int(member.value),
+                            "bits": int(member.value).bit_length(),
+                            "doc": enum_docs.get(name, {}).get(member.name, ""),
+                        }
+                        for member in value
+                    ],
+                }
+            )
+        elif callable(value):
+            values.append(
+                {
+                    "name": name,
+                    "kind": "function",
+                    "signature": str(inspect.signature(value)),
+                    "doc": " ".join((value.__doc__ or "").split()[:40]),
+                }
+            )
+        elif isinstance(value, bytes):
+            values.append(
+                {
+                    "name": name, "kind": "bytes",
+                    "hex": value.hex(), "length": len(value),
+                    "int_le": int.from_bytes(value, "little"),
+                    "int_be": int.from_bytes(value, "big"),
+                    "doc": docs.get(name, ""),
+                }
+            )
+        elif isinstance(value, bool):
+            continue
+        elif isinstance(value, int):
+            values.append(
+                {
+                    "name": name, "kind": "int", "value": int(value),
+                    "doc": docs.get(name, ""),
+                }
+            )
+        elif isinstance(value, str):
+            values.append(
+                {
+                    "name": name, "kind": "str", "text": value,
+                    "doc": docs.get(name, ""),
+                }
+            )
+
+    return {
+        "enums": enums,
+        "values": values,
+        # The version encoder demonstrated on real inputs rather than described.
+        # The page shows what the function returned; it does not re-implement it.
+        "fw_version_examples": [
+            {
+                "input": version,
+                "encoded": C.encode_fw_version(version).hex(),
+                "with_flag": C.with_maintenance_flag(
+                    C.encode_fw_version(version)
+                ).hex(),
+            }
+            for version in ("0.0.0", "1.2.0", "2.0.0", "2.0.1", "255.255.255")
+        ],
+    }
+
+
+def module_level_docs(module: Any) -> Dict[str, str]:
+    """`{NAME: docstring}` for module-level assignments, read from source."""
+    tree = ast.parse(pathlib.Path(inspect.getfile(module)).read_text())
+    out: Dict[str, str] = {}
+    previous: Optional[str] = None
+    for stmt in tree.body:
+        if isinstance(stmt, ast.Assign) and isinstance(stmt.targets[0], ast.Name):
+            previous = stmt.targets[0].id
+        elif (
+            isinstance(stmt, ast.Expr)
+            and isinstance(stmt.value, ast.Constant)
+            and isinstance(stmt.value.value, str)
+            and previous is not None
+        ):
+            out[previous] = " ".join(stmt.value.value.split())
+            previous = None
+        else:
+            previous = None
+    return out
+
+
 def frame_layouts() -> Dict[str, Any]:
     return {
         "request": [
@@ -941,6 +1195,9 @@ def provenance() -> Dict[str, Any]:
 
 
 def build() -> Dict[str, Any]:
+    # The only hand-written inverse in this file, checked against the model's
+    # own encoder before anything is emitted.
+    _check_version_roundtrip()
     spec = _build()
     # A capture that silently produced nothing would sail through every
     # downstream check - empty renders as empty, and "the page shows everything
@@ -976,6 +1233,7 @@ def _build() -> Dict[str, Any]:
         "get_info_objects": get_info_objects(),
         "fw_banks": fw_bank_layout(),
         "frame_layouts": frame_layouts(),
+        "constants": constants(),
         "boot_transitions": boot_transitions(),
         "wire_traces": wire_traces(),
         "exchanges": exchanges(),

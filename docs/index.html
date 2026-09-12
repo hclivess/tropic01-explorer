@@ -132,6 +132,20 @@ details[open] > summary { color: var(--ink); }
 .call.l3 { border-left-color: var(--accent); }
 .out.logstream { max-height: 300px; font-size: 11px; line-height: 1.5; }
 .out { background: #12171e; border: 1px solid var(--edge); border-radius: 6px; padding: 9px 12px; font-size: 11.5px; white-space: pre-wrap; color: var(--dim); max-height: 220px; overflow: auto; }
+input[type=search] {
+  font: inherit; font-size: 12.5px; width: 100%; padding: 8px 11px;
+  background: #12171e; color: var(--ink); border: 1px solid var(--edge2); border-radius: 5px;
+}
+.bitrow { display: flex; gap: 3px; flex-wrap: wrap; margin: 6px 0 2px; }
+.bitcell { border: 1px solid var(--edge2); border-radius: 3px; padding: 2px 6px; font-size: 10.5px; color: var(--faint); }
+.bitcell.set { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 2px 14px; font-size: 12px; margin-top: 6px; }
+.kv dt { color: var(--faint); }
+.kv dd { margin: 0; word-break: break-all; }
+tr.pick { cursor: pointer; }
+tr.pick:hover td { background: #1b222b; }
+tr.open td { background: #1b222b; }
+.decoded { border-left: 2px solid var(--accent); padding: 6px 0 6px 11px; margin: 8px 0; }
 footer { margin-top: 34px; padding-top: 14px; border-top: 1px solid var(--edge); color: var(--faint); font-size: 11.5px; }
 code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12px; }
 </style>
@@ -285,6 +299,29 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
   <div class="panel scroll"><div id="t-banks"></div></div>
 </section>
 
+<section id="tab-constants" hidden>
+  <h2>Constants</h2>
+  <p class="note">
+    Everything <code>tvl/constants.py</code> exports, read off the module rather
+    than retyped — every enum with its members and their documentation, every
+    size, every encoded version. Click a value to see it in other bases.
+  </p>
+  <div class="panel">
+    <input id="const-search" type="search" placeholder="filter by name or description…">
+    <div class="sub" id="const-count"></div>
+  </div>
+  <div id="const-enums"></div>
+  <div id="const-values"></div>
+  <h2>The firmware version encoding</h2>
+  <p class="note">
+    <code>encode_fw_version()</code> packs
+    <code>(major&nbsp;&lt;&lt;&nbsp;24) | (minor&nbsp;&lt;&lt;&nbsp;16) |
+    (patch&nbsp;&lt;&lt;&nbsp;8) | (commits&nbsp;&lt;&lt;&nbsp;1) | dirty</code>
+    little-endian. These are its real outputs, not a description of them.
+  </p>
+  <div class="panel scroll" id="const-versions"></div>
+</section>
+
 <section id="tab-about" hidden>
   <h2>Why this cannot drift</h2>
   <div class="panel" id="about"></div>
@@ -328,7 +365,7 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
   const TABS = [
     ["boot", "Boot"], ["co", "Configuration Object"], ["l2", "L2 API"],
     ["try", "Try it"], ["examples", "Examples"], ["fw", "FW banks"],
-    ["about", "How it works"],
+    ["constants", "Constants"], ["about", "How it works"],
   ];
   const nav = $("tabs");
   TABS.forEach(([id, label], i) => {
@@ -666,6 +703,53 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
         el("span", { className: "ascii", textContent: asc })]));
     });
 
+    // What the DATA field actually means. Worked out in Python from the model's
+    // own definitions and shipped in the spec; the page only renders it.
+    if (e.decoded) {
+      const d = e.decoded;
+      const box = el("div", { className: "decoded" });
+      if (d.kind === "fw_version") {
+        box.append(el("div", {}, [
+          el("strong", { textContent: "version " + d.version }),
+          document.createTextNode("  "),
+          d.maintenance_flag
+            ? tag("boot", "maintenance flag set")
+            : tag("app", "no maintenance flag"),
+        ]));
+        box.append(detail({
+          word: d.word + "  (little-endian)",
+          "major.minor.patch": d.major + "." + d.minor + "." + d.patch,
+          "commits since tag": d.commits,
+          dirty: d.dirty,
+        }));
+      } else if (d.kind === "fw_bank") {
+        if (d.empty) {
+          box.append(el("div", { className: "sub", textContent: d.note }));
+        } else {
+          const t = table(["offset", "field", "bytes", "meaning"],
+            d.fields.map((f) => [
+              String(f.offset), f.name,
+              el("code", { textContent:
+                (f.hex.match(/../g) || []).join(" ").slice(0, 52) +
+                (f.hex.length > 52 ? " …" : "") }),
+              el("span", { className: "doc",
+                textContent: f.decoded !== undefined ? f.decoded : (f.doc || "—") }),
+            ]));
+          box.append(el("div", { className: "scroll" }, [t]));
+        }
+      } else if (d.kind === "chip_id") {
+        box.append(el("div", { className: "sub", textContent: d.size + " bytes" }));
+        d.ascii.forEach((r) => box.append(el("div", {}, [
+          el("span", { className: "sub", textContent: "offset " + r.offset + "  " }),
+          el("span", { className: "ascii", textContent: JSON.stringify(r.text) }),
+        ])));
+      } else if (d.kind === "certificate") {
+        box.append(el("div", { className: "sub",
+          textContent: d.size + " bytes — " + d.note }));
+      }
+      node.append(box);
+    }
+
     node.append(el("div", { className: "sub", textContent:
       "mode after: " + e.mode_after + "   ·   CHIP_STATUS " + hex(e.chip_status_after) }));
 
@@ -912,6 +996,162 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
       hex(b.value), b.name,
       F.default_populated.includes(b.value) ? tag("app", "yes") : tag("no", "empty"),
       el("span", { className: "doc", textContent: b.doc || "—" }),
+    ])));
+
+  /* ================= CONSTANTS ================= */
+  const K = S.constants;
+
+  // Every representation of a number the page shows is derived from the number
+  // itself. No new facts, just other bases.
+  function representations(n, byteLength) {
+    const width = byteLength ? byteLength * 8 : Math.max(8, (n.toString(2).length + 7) & ~7);
+    const le = [], be = [];
+    for (let i = 0; i < width / 8; i++) {
+      const byte = (n >> (8 * i)) & 0xff;
+      le.push(byte.toString(16).padStart(2, "0"));
+      be.unshift(byte.toString(16).padStart(2, "0"));
+    }
+    return {
+      decimal: String(n),
+      hex: "0x" + n.toString(16).toUpperCase(),
+      binary: "0b" + n.toString(2).padStart(width, "0"),
+      "bytes, little-endian": le.join(" "),
+      "bytes, big-endian": be.join(" "),
+    };
+  }
+
+  function detail(pairs) {
+    const dl = el("dl", { className: "kv" });
+    Object.entries(pairs).forEach(([k, v]) => {
+      dl.append(el("dt", { textContent: k }));
+      dl.append(el("dd", { textContent: String(v) }));
+    });
+    return dl;
+  }
+
+  // A row that expands to show the same value other ways.
+  function expandable(cells, build) {
+    const tr = el("tr", { className: "pick" });
+    cells.forEach((c) => {
+      const td = el("td");
+      if (c instanceof Node) td.append(c); else td.textContent = String(c);
+      tr.append(td);
+    });
+    let open = null;
+    tr.onclick = () => {
+      if (open) { open.remove(); open = null; tr.classList.remove("open"); return; }
+      open = el("tr");
+      const td = el("td");
+      td.colSpan = cells.length;
+      td.append(build());
+      open.append(td);
+      tr.after(open);
+      tr.classList.add("open");
+    };
+    return tr;
+  }
+
+  function renderConstants(filter) {
+    const needle = (filter || "").toLowerCase();
+    const hit = (name, doc) =>
+      !needle || name.toLowerCase().includes(needle) ||
+      (doc || "").toLowerCase().includes(needle);
+
+    const enumsBox = $("const-enums");
+    enumsBox.innerHTML = "";
+    let shown = 0;
+
+    K.enums.forEach((en) => {
+      const members = en.members.filter((m) => hit(en.name + " " + m.name, m.doc));
+      if (!members.length && !hit(en.name, en.doc)) return;
+      shown += members.length;
+      const panel = el("div", { className: "panel" });
+      panel.append(el("div", {}, [
+        el("strong", { textContent: en.name }),
+        el("span", { className: "sub", textContent:
+          "   " + (en.flag ? "IntFlag — members are bit positions" : "IntEnum") }),
+      ]));
+      if (en.doc) panel.append(el("div", { className: "sub", textContent: en.doc }));
+
+      const rows = (members.length ? members : en.members).map((m) =>
+        expandable(
+          [hex(m.value), m.name,
+           el("span", { className: "doc", textContent: m.doc || "—" })],
+          () => {
+            const box = el("div");
+            if (en.flag) {
+              const bits = el("div", { className: "bitrow" });
+              for (let b = 7; b >= 0; b--) {
+                bits.append(el("span", {
+                  className: "bitcell" + ((m.value >> b) & 1 ? " set" : ""),
+                  textContent: "b" + b,
+                }));
+              }
+              box.append(bits);
+            }
+            box.append(detail(representations(m.value, 1)));
+            return box;
+          }));
+      const t = table(["value", "name", "description"], []);
+      rows.forEach((r) => t.querySelector("tbody").append(r));
+      panel.append(el("div", { className: "scroll" }, [t]));
+      enumsBox.append(panel);
+    });
+
+    const valuesBox = $("const-values");
+    valuesBox.innerHTML = "";
+    const vals = K.values.filter((v) => hit(v.name, v.doc));
+    shown += vals.length;
+    if (vals.length) {
+      const panel = el("div", { className: "panel scroll" });
+      const t = table(["name", "kind", "value", "description"], []);
+      vals.forEach((v) => {
+        const shownValue =
+          v.kind === "int" ? String(v.value) + "  (" + hex(v.value) + ")"
+          : v.kind === "bytes" ? v.hex + "   " + v.length + "B"
+          : v.kind === "str" ? JSON.stringify(v.text)
+          : v.signature;
+        const row = expandable(
+          [v.name, v.kind, el("code", { textContent: shownValue }),
+           el("span", { className: "doc", textContent: v.doc || "—" })],
+          () => {
+            if (v.kind === "int") return detail(representations(v.value));
+            if (v.kind === "bytes") {
+              return detail({
+                hex: v.hex,
+                "spaced": (v.hex.match(/../g) || []).join(" "),
+                length: v.length + " bytes",
+                "as int, little-endian": v.int_le,
+                "as int, big-endian": v.int_be,
+              });
+            }
+            return detail({ value: v.kind === "str" ? v.text : v.signature,
+                            documentation: v.doc || "—" });
+          });
+        t.querySelector("tbody").append(row);
+      });
+      panel.append(t);
+      valuesBox.append(panel);
+    }
+
+    $("const-count").textContent =
+      shown + " of " +
+      (K.enums.reduce((a, e) => a + e.members.length, 0) + K.values.length) +
+      " entries" + (needle ? " matching \u201c" + filter + "\u201d" : "");
+  }
+
+  $("const-search").oninput = (e) => renderConstants(e.target.value);
+  renderConstants("");
+
+  put("const-versions", table(
+    ["input", "encode_fw_version()", "with_maintenance_flag()"],
+    K.fw_version_examples.map((x) => [
+      x.input,
+      el("code", { textContent: (x.encoded.match(/../g) || []).join(" ") }),
+      x.with_flag === x.encoded
+        ? el("span", { className: "vol", textContent:
+            (x.with_flag.match(/../g) || []).join(" ") + "  — unchanged: the flag is bit 7 of the major byte" })
+        : el("code", { textContent: (x.with_flag.match(/../g) || []).join(" ") }),
     ])));
 
   /* ================= ABOUT ================= */

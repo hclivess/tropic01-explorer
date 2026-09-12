@@ -225,6 +225,41 @@ dom.window.addEventListener("load", () => {
   const anyVolatile = spec.examples.some((x) => x.any_volatile);
   check("session-dependent bytes are marked", n("#examples .vol") > 0, anyVolatile);
 
+  // constants, read off tvl/constants.py
+  const entries = spec.constants.enums.reduce((a, e) => a + e.members.length, 0)
+    + spec.constants.values.length;
+  atLeast("constant entries", entries, 10);
+  check("enum panels", n("#const-enums > .panel"), spec.constants.enums.length);
+  check("value rows", n("#const-values tbody tr"), spec.constants.values.length);
+  check("version examples", n("#const-versions tbody tr"),
+    spec.constants.fw_version_examples.length);
+  const search = d.getElementById("const-search");
+  search.value = "version";
+  search.dispatchEvent(new dom.window.Event("input"));
+  check("filtering narrows the list",
+    n("#const-values tbody tr") < spec.constants.values.length, true);
+  search.value = "";
+  search.dispatchEvent(new dom.window.Event("input"));
+  check("clearing the filter restores it",
+    n("#const-values tbody tr"), spec.constants.values.length);
+
+  // decoded payloads in Try it
+  const decodable = spec.exchanges.filter((e) => e.decoded).length;
+  atLeast("decodable exchanges", decodable, 1);
+  const vsn = spec.exchanges.find(
+    (e) => e.decoded && e.decoded.kind === "fw_version");
+  if (vsn) {
+    const k = vsn.group + " · " + vsn.label;
+    const sel = d.getElementById("try-pick");
+    sel.value = k;
+    sel.dispatchEvent(new dom.window.Event("change"));
+    check("payload is decoded, not just hex",
+      d.querySelector("#try-main .decoded") !== null, true);
+    check("decoded shows the version string",
+      d.querySelector("#try-main .decoded").textContent.includes(vsn.decoded.version),
+      true);
+  }
+
   // the boot toggles go through the same shared helper
   const fwNo = [...d.querySelectorAll("#seg-fw button")].find((b) => b.textContent === "no");
   if (fwNo) {
