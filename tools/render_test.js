@@ -409,6 +409,11 @@ async function run() {
     }
   }
 
+  // the boot table's status note is computed from the capture, not typed
+  check("boot status note names UNKNOWN_REQ and links to Try it",
+    d.getElementById("boot-status-note").textContent.includes("UNKNOWN_REQ") &&
+    d.querySelectorAll("#boot-status-note button.linkish").length === 1, true);
+
   check("errors after interaction", errors.length, 0);
 
   console.log();

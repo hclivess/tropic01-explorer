@@ -221,6 +221,7 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
   </div>
   <h2>The captured table</h2>
   <div class="panel scroll"><div id="t-boot"></div></div>
+  <p class="note" id="boot-status-note"></p>
 </section>
 
 <section id="tab-co" hidden>
@@ -696,6 +697,19 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
       hex(r.chip_status),
     ])
   ));
+  // Readers look for UNKNOWN_REQ here and do not find it: this table holds
+  // only Startup_Req outcomes, and Startup_Req is served in both modes. Say
+  // so, from the captured statuses, and point at the exchange that has it.
+  {
+    const seen = [...new Set(S.boot_transitions.map((r) => r.l2_status).filter((v) => v !== null))]
+      .map((v) => hex(v) + " " + (statusName[v] || "?")).join(" and ");
+    const unknown = S.l2_status_codes.find((c) => c.name === "UNKNOWN_REQ");
+    const n = $("boot-status-note");
+    n.append("Only " + seen + " can appear in the L2 status column: every row is a Startup_Req, and Startup_Req is served in both modes. ");
+    n.append(hex(unknown.value) + " " + unknown.name + " is the gate's answer for a request the running firmware does not have - a ");
+    n.append(tryLink("Handshake in Start-up mode", (e) => e.group === "Handshake", "START_UP"));
+    n.append(", for instance.");
+  }
   renderBoot();
 
   /* ================= CONFIGURATION OBJECT ================= */
