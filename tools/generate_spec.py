@@ -764,6 +764,187 @@ def exchanges() -> List[Dict[str, Any]]:
     return out
 
 
+
+def call_traces() -> Dict[str, Any]:
+    """How the model's code actually traverses, for a handful of requests.
+
+    Not a description of the call graph: each scenario is run under
+    `sys.settrace` and every call into, and return out of, the model's own
+    modules is recorded - file, function, line, depth, and what came back. The
+    page steps through that record. Only the model's files are kept (plus the
+    host's entry point), so the trace is the spine and not the framing library.
+    """
+    import inspect
+    import sys
+
+    from tvl.constants import L2IdFieldEnum
+
+    root = pathlib.Path(inspect.getfile(Host)).resolve().parents[2]  # .../tvl/host/host.py
+    keep = (
+        "tvl/targets/model/base_model.py",
+        "tvl/targets/model/tropic01_l2_api_impl.py",
+        "tvl/targets/model/internal/spi_fsm.py",
+        "tvl/targets/model/internal/chip_mode.py",
+        "tvl/targets/model/internal/fw_bank.py",
+        "tvl/host/host.py",
+    )
+    # Property getters and comprehensions are noise; the CO internals (27
+    # registers ANDed on every `self.config`) would swamp the boot scenario.
+    skip_names = {"set_logger", "target_driver", "<genexpr>", "<listcomp>", "<dictcomp>", "<setcomp>"}
+    MAX_STEPS, MAX_DEPTH = 400, 12
+
+    def scrub(text: str) -> str:
+        return re.sub(r"(<[^<>]*? at )0x[0-9a-f]+(>)", r"\g<1>0x...\g<2>", text)
+
+    def show(value: Any) -> str:
+        if isinstance(value, (bytes, bytearray)):
+            h = bytes(value).hex(" ")
+            return h if len(value) <= 24 else h[:71] + " …"
+        if hasattr(value, "name") and hasattr(value, "value"):
+            return f"{type(value).__name__}.{value.name}"
+        text = scrub(str(value))
+        return text if len(text) <= 80 else text[:77] + "…"
+
+    sources: Dict[str, Dict[str, Any]] = {}
+    names: Dict[Any, str] = {}
+
+    def display_name(code: Any) -> str:
+        """The qualname - except a singledispatch overload registered as `def _`,
+        which is shown under the name it overloads, read off its decorator."""
+        if code in names:
+            return names[code]
+        name = getattr(code, "co_qualname", code.co_name)
+        if code.co_name == "_":
+            try:
+                first = inspect.getsourcelines(code)[0][0]
+                m = re.match(r"\s*@(\w+)\.register", first)
+                if m:
+                    name = name[: -len("_")] + m.group(1) + " (overload)"
+            except (OSError, TypeError):
+                pass
+        names[code] = name
+        return name
+
+    def record(scenario: Dict[str, Any], run: Any) -> None:
+        steps: List[Dict[str, Any]] = []
+        depth = [0]
+
+        def local(frame: Any, event: str, arg: Any) -> Any:
+            if event == "return":
+                code = frame.f_code
+                if depth[0] <= MAX_DEPTH and len(steps) < MAX_STEPS:
+                    steps.append({
+                        "event": "return", "depth": depth[0],
+                        "file": str(pathlib.Path(code.co_filename).resolve().relative_to(root)),
+                        "function": display_name(code),
+                        "line": frame.f_lineno, "value": show(arg),
+                    })
+                depth[0] -= 1
+            return local
+
+        def tracer(frame: Any, event: str, arg: Any) -> Any:
+            if event != "call":
+                return None
+            code = frame.f_code
+            try:
+                rel = str(pathlib.Path(code.co_filename).resolve().relative_to(root))
+            except ValueError:
+                return None
+            name = display_name(code)
+            if rel not in keep or code.co_name in skip_names:
+                return None
+            depth[0] += 1
+            if depth[0] <= MAX_DEPTH and len(steps) < MAX_STEPS:
+                steps.append({"event": "call", "depth": depth[0], "file": rel,
+                              "function": name, "line": frame.f_lineno, "value": None})
+                key = f"{rel}::{name}"
+                if key not in sources:
+                    try:
+                        lines, first = inspect.getsourcelines(code)
+                        sources[key] = {"first_line": first, "text": "".join(lines[:60])}
+                    except (OSError, TypeError):
+                        pass
+            return local
+
+        sys.settrace(tracer)
+        try:
+            run()
+        finally:
+            sys.settrace(None)
+        scenario["steps"] = steps
+        scenario["truncated"] = len(steps) >= MAX_STEPS
+
+    from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
+    host_priv = bytes(range(32))
+    host_pub = X25519PrivateKey.from_private_bytes(host_priv).public_key().public_bytes_raw()
+    tropic_priv = bytes(range(32, 64))
+    tropic_pub = X25519PrivateKey.from_private_bytes(tropic_priv).public_key().public_bytes_raw()
+
+    def fresh(mode: ChipMode, *, r_config: Optional[Dict[str, int]] = None):
+        model = Tropic01Model(
+            debug_random_value=bytes(4), busy_iter=[False],
+            s_t_priv=tropic_priv, s_t_pub=tropic_pub,
+            **({"r_config": ConfigurationObjectImpl.from_dict(r_config)} if r_config else {}),
+        )
+        model.i_pairing_keys[0].write(host_pub)
+        model.power_on()
+        if mode is ChipMode.START_UP:
+            model.reboot(BootTarget.START_UP)
+        host = Host(
+            s_h_priv=[host_priv], s_h_pub=[host_pub], s_t_pub=tropic_pub,
+            pairing_key_index=0, debug_random_value=bytes(4),
+        ).set_target(model)
+        return model, host
+
+    oid = TsL2GetInfoRequest.ObjectIdEnum
+    sid = TsL2StartupRequest.StartupIdEnum
+    scenarios: List[Dict[str, Any]] = []
+
+    def scenario(title: str, mode: ChipMode, request: Any, *, then_read: bool = False,
+                 r_config: Optional[Dict[str, int]] = None, note: str = "") -> None:
+        model, host = fresh(mode, r_config=r_config)
+        entry = {"title": title, "mode": mode.name, "request_class": type(request).__name__,
+                 "request": request.to_bytes().hex(), "note": note}
+
+        def run() -> None:
+            entry["response"] = bytes(host.send_request(request.to_bytes())).hex()
+            if then_read:
+                # The restart lands on the next transaction, as it does on silicon.
+                model.spi_drive_csn_low()
+                model.spi_send(bytes([L2IdFieldEnum.GET_RESP]))
+                model.spi_drive_csn_high()
+            entry["mode_after"] = model.chip_mode.name
+
+        record(entry, run)
+        scenarios.append(entry)
+
+    scenario("Get_Info CHIP_ID in Application mode", ChipMode.APPLICATION,
+             TsL2GetInfoRequest(object_id=oid.CHIP_ID, block_index=0),
+             note="The plain path: SPI FSM, frame check, the gate, the handler, one provider.")
+    scenario("Startup_Req MAINTENANCE_REBOOT, then the read that lands it", ChipMode.APPLICATION,
+             TsL2StartupRequest(startup_id=sid.MAINTENANCE_REBOOT), then_read=True,
+             note="The handler answers and schedules; the boot itself runs on the next transaction.")
+    scenario("Handshake in Start-up mode", ChipMode.START_UP,
+             TsL2HandshakeRequest(e_hpub=bytes(32), pkey_index=0),
+             note="Refused before any handler: the gate answers UNKNOWN_REQ.")
+    scenario("Get_Info FW_BANK in Start-up mode", ChipMode.START_UP,
+             TsL2GetInfoRequest(object_id=oid.FW_BANK, block_index=FwBankIdEnum.FW1),
+             note="The Start-up table selects a provider the Application table does not have.")
+    scenario("Startup_Req MAINTENANCE_REBOOT with MAINTENANCE_ENA = 0", ChipMode.APPLICATION,
+             TsL2StartupRequest(startup_id=sid.MAINTENANCE_REBOOT),
+             r_config={"cfg_start_up": 0xFFFF_FFF7},
+             note="Refused from the handler, as the firmware does; nothing is scheduled.")
+    scenario("Get_Log_Req with CFG_DEBUG.FW_LOG_EN = 0", ChipMode.APPLICATION,
+             TsL2GetLogRequest(), r_config={"cfg_debug": 0xFFFF_FFFE},
+             note="A Configuration Object gate: RESP_DISABLED with no payload.")
+
+    for sc in scenarios:
+        if len(sc["steps"]) < 3:
+            raise SystemExit(f"walkthrough {sc['title']!r} recorded {len(sc['steps'])} steps; "
+                             "the tracer or the file whitelist no longer matches the model.")
+    return {"scenarios": scenarios, "sources": sources}
+
+
 def repo_examples(ts_tvl: pathlib.Path) -> List[Dict[str, Any]]:
     """Run ts-tvl's own example scripts and record what they did.
 
@@ -1258,6 +1439,7 @@ def _build() -> Dict[str, Any]:
         "frame_layouts": frame_layouts(),
         "constants": constants(),
         "boot_transitions": boot_transitions(),
+        "walkthroughs": call_traces(),
         "wire_traces": wire_traces(),
         "exchanges": exchanges(),
         "examples": repo_examples(
@@ -1309,6 +1491,7 @@ def main() -> int:
         f"{len(spec['co_registers'])} CO registers, "
         f"{len(spec['l2_requests'])} L2 requests, "
         f"{len(spec['boot_transitions'])} boot transitions, "
+        f"{len(spec['walkthroughs']['scenarios'])} walkthroughs, "
         f"{len(spec['wire_traces'])} traces, "
         f"{len(spec['exchanges'])} exchanges"
     )

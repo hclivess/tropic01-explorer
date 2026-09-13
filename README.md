@@ -68,6 +68,15 @@ quickest way to see the shape of the change:
 None of that table is typed here by a person either; it is what the capture
 came back with.
 
+The **Walkthrough** tab is a break-mode view of the same runs: six scenarios
+(a `Get_Info` in each mode, the `MAINTENANCE_REBOOT` up to the read that lands
+it, the refused handshake, the two CO-gated refusals), recorded with
+`sys.settrace` while the request went through the model. Step through the calls
+one at a time; the source of the function at the cursor lights up at the
+executing line. Only the model's own files are traced — the pydantic and
+protocol plumbing is filtered out, or the reboot scenario would be four hundred
+steps of register reads.
+
 **3. Enforcement.** The generator's `--check` mode regenerates in memory and
 fails if `docs/model_spec.js` differs. That gate runs **before every push**:
 
@@ -90,7 +99,7 @@ than passing quietly.
 ts-tvl (Python)
    │
    │  introspect  ──  registers, fields, ids, tables, struct layout
-   │  execute     ──  boot transitions, wire traces
+   │  execute     ──  boot transitions, wire traces, call traces
    ▼
 docs/model_spec.js        ← generated, never edited
    │

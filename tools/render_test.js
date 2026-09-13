@@ -82,6 +82,10 @@ function run() {
   atLeast("CO registers", spec.co_registers.length, 1);
   atLeast("L2 requests", spec.l2_requests.length, 1);
   atLeast("boot transitions", spec.boot_transitions.length, 1);
+  atLeast("walkthrough scenarios", (spec.walkthroughs || { scenarios: [] }).scenarios.length, 3);
+  (spec.walkthroughs || { scenarios: [] }).scenarios.forEach((sc) =>
+    atLeast("steps in '" + sc.title + "'", sc.steps.length, 5));
+  atLeast("walkthrough source excerpts", Object.keys((spec.walkthroughs || { sources: {} }).sources).length, 3);
   atLeast("boot transitions with wire bytes",
     spec.boot_transitions.filter((r) => r.request && r.response).length, 1);
   atLeast("wire traces", spec.wire_traces.length, 1);
@@ -361,6 +365,35 @@ function run() {
     check("boot toggle marks itself pressed", fwNo.getAttribute("aria-pressed"), "true");
     check("boot toggle redraws the action buttons",
       d.querySelectorAll("#acts button").length > 0, true);
+  }
+
+  // the walkthrough must step through the captured trace, not a description
+  {
+    const W = spec.walkthroughs; const sc = W.scenarios[0];
+    check("walkthrough picker lists every scenario",
+      d.querySelectorAll("#walk-pick option").length, W.scenarios.length);
+    check("walkthrough renders every step of the first scenario",
+      d.querySelectorAll("#walk-steps .wstep").length, sc.steps.length);
+    const cur = () => [...d.querySelectorAll("#walk-steps .wstep")].findIndex((r) => r.classList.contains("cur"));
+    check("walkthrough starts at step 1", cur(), 0);
+    d.getElementById("walk-next").click(); d.getElementById("walk-next").click();
+    check("next moves the highlighted step", cur(), 2);
+    check("position readout follows", d.getElementById("walk-pos").textContent.startsWith("step 3 of"), true);
+    check("source pane names the current function",
+      d.getElementById("walk-src").textContent.includes(sc.steps[2].function), true);
+    check("source pane lights the current line",
+      d.querySelectorAll("#walk-src .srcline.cur").length, 1);
+    d.getElementById("walk-run").click();
+    check("run to end lands on the last step", cur(), sc.steps.length - 1);
+    d.getElementById("walk-reset").click();
+    check("reset returns to the first step", cur(), 0);
+    // switching scenario must rebuild the list for THAT scenario
+    const pick = d.getElementById("walk-pick");
+    if (W.scenarios.length > 1) {
+      pick.value = "1"; pick.dispatchEvent(new dom.window.Event("change"));
+      check("changing scenario rebuilds the step list",
+        d.querySelectorAll("#walk-steps .wstep").length, W.scenarios[1].steps.length);
+    }
   }
 
   check("errors after interaction", errors.length, 0);

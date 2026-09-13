@@ -153,6 +153,18 @@ tr.open td { background: #1b222b; }
 .linkish:hover { color: var(--ink); border-bottom-color: var(--ink); }
 footer { margin-top: 34px; padding-top: 14px; border-top: 1px solid var(--edge); color: var(--faint); font-size: 11.5px; }
 code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+  .walk { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start }
+  .walk-steps { flex:1 1 380px; max-height:520px; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12.5px }
+  .walk-src { flex:1 1 380px; max-height:520px; overflow:auto }
+  .wstep { padding:2px 6px; border-left:3px solid transparent; white-space:nowrap; cursor:pointer }
+  .wstep .fn { font-weight:600 }
+  .wstep .loc { opacity:.6; margin-left:8px }
+  .wstep.ret { opacity:.65 }
+  .wstep.ret .val { margin-left:8px; color:#8a6d00 }
+  .wstep.cur { background:rgba(255,200,0,.18); border-left-color:#e0a800 }
+  .srcline { white-space:pre; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12.5px; padding:0 6px }
+  .srcline .ln { display:inline-block; width:3.5em; opacity:.45; text-align:right; margin-right:10px }
+  .srcline.cur { background:rgba(255,200,0,.22) }
 </style>
 </head>
 <body>
@@ -319,6 +331,41 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
   <div id="wire"></div>
 </section>
 
+<section id="tab-walk" hidden>
+  <h2>Code walkthrough</h2>
+  <p class="note">
+    How the model's code actually traverses for one request. Each scenario was
+    run under Python's tracer and every call into, and return out of, the model's
+    own modules was recorded — file, function, line, and what came back. Step
+    through it like a debugger; the pane on the right shows the source of the
+    function the current step is in. Nothing here is described by hand: the steps
+    are the record, the source is the file.
+  </p>
+  <div class="panel">
+    <div class="controls">
+      <div class="ctl" style="flex:1 1 320px">
+        <label>Scenario</label>
+        <select id="walk-pick"></select>
+      </div>
+      <div class="ctl">
+        <label>Step</label>
+        <div class="act">
+          <button id="walk-reset" title="back to the first step">⏮ reset</button>
+          <button id="walk-back" title="previous step">◀ back</button>
+          <button id="walk-next" title="next step">next ▶</button>
+          <button id="walk-run" title="run to the end">run to end ⏭</button>
+        </div>
+      </div>
+    </div>
+    <div class="sub" id="walk-note"></div>
+    <div class="sub" id="walk-pos"></div>
+    <div class="walk">
+      <div class="walk-steps scroll" id="walk-steps"></div>
+      <div class="walk-src" id="walk-src"></div>
+    </div>
+  </div>
+</section>
+
 <section id="tab-examples" hidden>
   <h2>The repository's own examples, executed</h2>
   <p class="note">
@@ -419,7 +466,7 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
   /* ---------- tabs ---------- */
   const TABS = [
     ["boot", "Boot"], ["co", "Configuration Object"], ["l2", "L2 API"],
-    ["try", "Try it"], ["examples", "Examples"], ["fw", "FW banks"],
+    ["try", "Try it"], ["walk", "Walkthrough"], ["examples", "Examples"], ["fw", "FW banks"],
     ["constants", "Constants"], ["about", "How it works"],
   ];
   const nav = $("tabs");
@@ -1118,6 +1165,65 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
     p.append(el("div", { className: "sub", textContent: "CHIP_STATUS after: " + hex(t.chip_status) }));
     wireBox.append(p);
   });
+
+  /* ================= WALKTHROUGH ================= */
+  const WK = S.walkthroughs || { scenarios: [], sources: {} };
+  const walk = { i: 0, key: 0 };
+  const wpick = $("walk-pick");
+  WK.scenarios.forEach((sc, i) => wpick.append(el("option", { value: String(i), textContent: sc.title })));
+  wpick.onchange = () => { walk.key = Number(wpick.value); walk.i = 0; buildWalk(); renderWalk(); };
+
+  // Built once per scenario; stepping only moves the highlight, so the list is
+  // never replaced under the pointer and the scroll position survives.
+  function buildWalk() {
+    const sc = WK.scenarios[walk.key]; const box = $("walk-steps"); box.innerHTML = "";
+    if (!sc) return;
+    $("walk-note").textContent = sc.note + "   ·   " + sc.request_class + " in " + sc.mode + " → mode after: " + sc.mode_after;
+    sc.steps.forEach((st, i) => {
+      const row = el("div", { className: "wstep" + (st.event === "return" ? " ret" : "") });
+      row.style.paddingLeft = (6 + (st.depth - 1) * 14) + "px";
+      row.append(el("span", { textContent: st.event === "call" ? "→ " : "← " }));
+      row.append(el("span", { className: "fn", textContent: st.function }));
+      row.append(el("span", { className: "loc", textContent: st.file.split("/").pop() + ":" + st.line }));
+      if (st.event === "return") row.append(el("span", { className: "val", textContent: "= " + st.value }));
+      row.onclick = () => { walk.i = i; renderWalk(); };
+      box.append(row);
+    });
+  }
+
+  function renderWalk() {
+    const sc = WK.scenarios[walk.key]; if (!sc) return;
+    const rows = $("walk-steps").children; const st = sc.steps[walk.i];
+    [...rows].forEach((r, i) => r.classList.toggle("cur", i === walk.i));
+    if (rows[walk.i] && rows[walk.i].scrollIntoView) rows[walk.i].scrollIntoView({ block: "nearest" });
+    $("walk-pos").textContent = "step " + (walk.i + 1) + " of " + sc.steps.length +
+      (sc.truncated ? "   (capture capped)" : "");
+    $("walk-back").disabled = walk.i === 0;
+    $("walk-next").disabled = walk.i >= sc.steps.length - 1;
+    $("walk-run").disabled = walk.i >= sc.steps.length - 1;
+    // The source pane: the function the current step is in, its current line lit.
+    const src = $("walk-src"); src.innerHTML = "";
+    src.append(el("div", { className: "sub", textContent: st.file + " — " + st.function }));
+    const entry = WK.sources[st.file + "::" + st.function];
+    if (!entry) { src.append(el("div", { className: "sub", textContent: "source not captured" })); return; }
+    const pane = el("div", { className: "src" });
+    entry.text.split("\n").forEach((line, k) => {
+      const n = entry.first_line + k;
+      if (k === entry.text.split("\n").length - 1 && line === "") return;
+      const row = el("div", { className: "srcline" + (n === st.line ? " cur" : "") });
+      row.append(el("span", { className: "ln", textContent: String(n) }));
+      row.append(pythonise(line));
+      pane.append(row);
+    });
+    src.append(pane);
+    const lit = pane.querySelector(".srcline.cur");
+    if (lit && lit.scrollIntoView) lit.scrollIntoView({ block: "center" });
+  }
+  $("walk-next").onclick = () => { walk.i = Math.min(walk.i + 1, WK.scenarios[walk.key].steps.length - 1); renderWalk(); };
+  $("walk-back").onclick = () => { walk.i = Math.max(walk.i - 1, 0); renderWalk(); };
+  $("walk-run").onclick = () => { walk.i = WK.scenarios[walk.key].steps.length - 1; renderWalk(); };
+  $("walk-reset").onclick = () => { walk.i = 0; renderWalk(); };
+  buildWalk(); renderWalk();
 
   /* ================= EXAMPLES ================= */
   // Minimal Python colouring. Cosmetic only - it never changes a byte, and it
