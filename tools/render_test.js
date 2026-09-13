@@ -45,7 +45,25 @@ const dom = new JSDOM(fs.readFileSync(path.join(DOCS, "index.html"), "utf8"), {
   },
 });
 
+// If the page never loads, or a check throws half-way, the handler below never
+// reaches its exit(1) - and node then exits 0 with FAIL lines on screen. Both
+// happened. Crash loudly instead: a gate that can pass while failing is worse
+// than no gate.
+const watchdog = setTimeout(() => {
+  console.error("render test: the page never finished loading");
+  process.exit(1);
+}, 30000);
 dom.window.addEventListener("load", () => {
+  clearTimeout(watchdog);
+  try {
+    run();
+  } catch (e) {
+    console.error("render test crashed mid-way: " + ((e && e.stack) || e));
+    process.exit(1);
+  }
+});
+
+function run() {
   const d = dom.window.document;
   const n = (sel) => d.querySelectorAll(sel).length;
 
@@ -64,6 +82,8 @@ dom.window.addEventListener("load", () => {
   atLeast("CO registers", spec.co_registers.length, 1);
   atLeast("L2 requests", spec.l2_requests.length, 1);
   atLeast("boot transitions", spec.boot_transitions.length, 1);
+  atLeast("boot transitions with wire bytes",
+    spec.boot_transitions.filter((r) => r.request && r.response).length, 1);
   atLeast("wire traces", spec.wire_traces.length, 1);
   atLeast("CHIP_STATUS flags", spec.chip_status_flags.length, 1);
   atLeast("FW header fields", spec.fw_banks.fields.length, 1);
@@ -86,6 +106,8 @@ dom.window.addEventListener("load", () => {
   check("CO registers listed", n("#t-co tbody tr"), spec.co_registers.length);
   check("clickable registers", n("#map .cell[data-name]"), spec.co_registers.length);
   check("boot transitions", n("#t-boot tbody tr"), spec.boot_transitions.length);
+  check("boot rows link to their Try-it exchange", n("#t-boot button.linkish"),
+    spec.boot_transitions.filter((r) => r.action !== "POWER_ON").length);
   check("L2 requests", n("#t-l2 tbody tr"), spec.l2_requests.length);
   check("wire traces", n("#wire .panel"), spec.wire_traces.length);
   check("FW header fields", n("#fwhdr tbody tr"), spec.fw_banks.fields.length);
@@ -127,6 +149,13 @@ dom.window.addEventListener("load", () => {
     );
     check("maintenance reboot lands where the capture says",
       d.getElementById("r-mode").textContent, expected.to);
+    // and shows the frames that did it, decoded the way Try-it decodes them
+    const bb = d.getElementById("boot-bytes");
+    check("boot panel shows request and response frames", bb.querySelectorAll(".frame").length, 2);
+    check("boot panel request frame carries the captured REQ_ID",
+      bb.textContent.includes(hex(parseInt(expected.request.slice(0, 2), 16))), true);
+    check("boot panel response frame carries the captured STATUS",
+      bb.textContent.includes(hex(parseInt(expected.response.slice(0, 2), 16))), true);
   }
 
   // and the fix this repo exists to visualise: disabled means refused
@@ -342,4 +371,4 @@ dom.window.addEventListener("load", () => {
     process.exit(1);
   }
   console.log("all checks passed");
-});
+}

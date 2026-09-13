@@ -21,7 +21,7 @@ So nothing on the page is written by hand. `tools/generate_spec.py` produces
 **1. Introspection of the live objects.** Registers, field offsets and widths,
 request ids, the gating tables, the FW bank header layout — read off
 `ConfigurationObjectImpl`, `L2Enum`, `L2_REQUEST_MODES`, `GET_INFO_OBJECTS`,
-`_HEADER_STRUCT`. Field descriptions come from the source through `ast`, because
+`_HEADER`. Field descriptions come from the source through `ast`, because
 Python discards the string literals that document attributes.
 
 The header layout is a good example of why this matters. The generator does not
@@ -54,7 +54,7 @@ untouched.
 
 The **Try it** tab is the same idea taken as far as it goes: every request worth
 sending, sent in every mode, each against a *fresh* chip so nothing leaks
-between them. 42 exchanges. Picking one shows what the model actually answered
+between them. 44 exchanges. Picking one shows what the model actually answered
 and what the *other* firmware answers to the identical bytes — which is the
 quickest way to see the shape of the change:
 

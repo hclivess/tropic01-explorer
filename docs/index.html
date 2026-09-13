@@ -197,6 +197,7 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
         <div class="bits" id="r-bits"></div>
       </div>
     </div>
+    <div class="pane" id="boot-bytes"></div>
     <div class="log" id="log"></div>
   </div>
   <h2>The captured table</h2>
@@ -453,6 +454,19 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
       tb.append(tr);
     });
     t.append(tb);
+    // A description column the model does not fill is dropped, not shown as a
+    // column of dashes. The model's attribute docstrings are optional; the page
+    // says nothing rather than pretending there was something to say.
+    const nCols = head.length;
+    for (let c = nCols - 1; c >= 0; c--) {
+      const cells = [...tb.querySelectorAll("tr")].map((tr) => tr.children[c]);
+      if (cells.length && cells.every((td) =>
+          td.firstChild && td.firstChild.classList &&
+          td.firstChild.classList.contains("doc") && td.textContent === "—")) {
+        t.querySelector("thead tr").children[c].remove();
+        cells.forEach((td) => td.remove());
+      }
+    }
     return t;
   };
   const put = (id, node) => { const n = $(id); n.innerHTML = ""; n.append(node); };
@@ -468,6 +482,7 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
     mode: S.chip_modes.some((m) => m.name === "APPLICATION") ? "APPLICATION" : S.chip_modes[0].name,
     status: null,
     chip: null,
+    request: null, response: null,   // the last Startup_Req frames, hex
   };
 
   // Shared by the boot panel and the Try-it panel, so it must not decide what
@@ -533,6 +548,7 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
     if (!row) return;
     const from = st.mode;
     st.mode = row.to; st.status = row.l2_status; st.chip = row.chip_status;
+    st.request = row.request || null; st.response = row.response || null;
     const s = row.l2_status === null
       ? "power-on"
       : hex(row.l2_status) + " " + (statusName[row.l2_status] || "?");
@@ -590,12 +606,29 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
       bits.append(el("span", { className: "bit" + (on ? " on" : ""), textContent: f.name }));
     });
     $("log").innerHTML = logLines.slice(0, 40).map((l) => "<div>" + l + "</div>").join("");
+
+    // The same frames the Try-it tab shows, for the action just pressed: the
+    // Startup_Req that crossed the wire, and the read that lands the restart.
+    const bb = $("boot-bytes"); bb.innerHTML = "";
+    if (st.request) {
+      bb.append(el("div", { className: "sub", textContent: "the last Startup_Req, as it crossed the wire" }));
+      renderFrames(bb, st.request, st.response);
+      bb.append(el("div", { className: "sub", textContent:
+        "then one GET_RESP read → CHIP_STATUS " + hex(st.chip) +
+        " — the restart lands on that read, not on the response" }));
+    } else if (st.status === null && st.chip !== null) {
+      bb.append(el("div", { className: "sub", textContent: "power-on sends no frame" }));
+    }
   }
 
   put("t-boot", table(
     ["from", "action", "MAINT_ENA", "has FW", "→ mode", "L2 status", "CHIP_STATUS"],
     S.boot_transitions.map((r) => [
-      r.from, r.action, String(r.maintenance_ena), r.has_riscv_fw ? "yes" : "no",
+      r.from,
+      // Every reboot row is also a Try-it exchange; link straight to its bytes.
+      r.action === "POWER_ON" ? r.action
+        : tryLink(r.action, (e) => (e.params || {}).STARTUP_ID === r.action, r.from),
+      String(r.maintenance_ena), r.has_riscv_fw ? "yes" : "no",
       tag(r.to === "START_UP" ? "boot" : "app", r.to),
       r.l2_status === null ? "—" :
         tag(r.l2_status === 1 ? "app" : "hot",
@@ -717,6 +750,29 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
     return X.find((e) => e.mode === mode && keyOf(e) === key);
   }
 
+  // One request frame and one response frame, decoded field by field. Used by
+  // the Try-it pane and the boot panel, so both show bytes the same way.
+  function renderFrames(node, request, response) {
+    [["→ request", request, ["REQ_ID", "REQ_LEN"]],
+     ["← response", response, ["STATUS", "RSP_LEN"]]].forEach(([lbl, raw, layout]) => {
+      const dec = decode(raw, layout);
+      node.append(el("div", { className: "sub", textContent: lbl }));
+      const row = el("div", { className: "frame" });
+      dec.fields.forEach((f) => {
+        const n = el("span", { className: "fld " + (f.cls || "") });
+        n.append(el("span", { className: "n", textContent: f.n }));
+        n.append(document.createTextNode(
+          f.v.length > 120 ? f.v.slice(0, 120) + " …" : f.v));
+        row.append(n);
+      });
+      node.append(row);
+      const asc = printable(dec.data || []);
+      if (asc) node.append(el("div", { className: "sub" }, [
+        document.createTextNode("ascii: "),
+        el("span", { className: "ascii", textContent: asc })]));
+    });
+  }
+
   function renderPane(node, e, isPrimary, counterpart) {
     node.innerHTML = "";
     if (!e) {
@@ -741,24 +797,7 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
         Object.entries(e.params).map(([k, v]) => k + "=" + v).join("  ") }));
     }
 
-    [["→ request", e.request, ["REQ_ID", "REQ_LEN"]],
-     ["← response", e.response, ["STATUS", "RSP_LEN"]]].forEach(([lbl, raw, layout]) => {
-      const dec = decode(raw, layout);
-      node.append(el("div", { className: "sub", textContent: lbl }));
-      const row = el("div", { className: "frame" });
-      dec.fields.forEach((f) => {
-        const n = el("span", { className: "fld " + (f.cls || "") });
-        n.append(el("span", { className: "n", textContent: f.n }));
-        n.append(document.createTextNode(
-          f.v.length > 120 ? f.v.slice(0, 120) + " …" : f.v));
-        row.append(n);
-      });
-      node.append(row);
-      const asc = printable(dec.data || []);
-      if (asc) node.append(el("div", { className: "sub" }, [
-        document.createTextNode("ascii: "),
-        el("span", { className: "ascii", textContent: asc })]));
-    });
+    renderFrames(node, e.request, e.response);
 
     // What the DATA field actually means. Worked out in Python from the model's
     // own definitions and shipped in the spec; the page only renders it.
@@ -827,6 +866,7 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
         // performed, so drop the readouts a transition would have produced and
         // say so in the log rather than leaving a stale status on screen.
         st.mode = v; st.status = null; st.chip = null; st.stranded = false;
+        st.request = null; st.response = null;
         logLines.unshift("<b>mode set directly</b> · now <b>" + v + "</b> · no reboot was performed");
       },
       () => { renderBoot(); renderTry(); });

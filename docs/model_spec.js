@@ -4,11 +4,11 @@
 window.MODEL_SPEC = {
  "boot_targets": [
   {
-   "doc": "Load the mutable FW from R-Memory and execute it if it is valid. This is what a power-on reset and ``Startup_Req(REBOOT)`` both do.",
+   "doc": "Load the mutable FW: power-on and Startup_Req(REBOOT).",
    "name": "APPLICATION"
   },
   {
-   "doc": "Do not load the mutable FW; stay in the bootloader. This is what ``Startup_Req(MAINTENANCE_REBOOT)`` asks for. It is the only way to reach Start-up mode on a chip whose mutable FW is healthy.",
+   "doc": "Stay in the bootloader: Startup_Req(MAINTENANCE_REBOOT).",
    "name": "START_UP"
   }
  ],
@@ -20,6 +20,8 @@ window.MODEL_SPEC = {
    "has_riscv_fw": true,
    "l2_status": null,
    "maintenance_ena": 1,
+   "request": null,
+   "response": null,
    "to": "APPLICATION"
   },
   {
@@ -29,6 +31,8 @@ window.MODEL_SPEC = {
    "has_riscv_fw": false,
    "l2_status": null,
    "maintenance_ena": 1,
+   "request": null,
+   "response": null,
    "to": "START_UP"
   },
   {
@@ -38,6 +42,8 @@ window.MODEL_SPEC = {
    "has_riscv_fw": true,
    "l2_status": null,
    "maintenance_ena": 0,
+   "request": null,
+   "response": null,
    "to": "APPLICATION"
   },
   {
@@ -47,6 +53,8 @@ window.MODEL_SPEC = {
    "has_riscv_fw": false,
    "l2_status": null,
    "maintenance_ena": 0,
+   "request": null,
+   "response": null,
    "to": "START_UP"
   },
   {
@@ -56,6 +64,8 @@ window.MODEL_SPEC = {
    "has_riscv_fw": true,
    "l2_status": 1,
    "maintenance_ena": 1,
+   "request": "b30101f98f",
+   "response": "01000386",
    "to": "APPLICATION"
   },
   {
@@ -65,6 +75,8 @@ window.MODEL_SPEC = {
    "has_riscv_fw": false,
    "l2_status": 1,
    "maintenance_ena": 1,
+   "request": "b30101f98f",
+   "response": "01000386",
    "to": "START_UP"
   },
   {
@@ -74,6 +86,8 @@ window.MODEL_SPEC = {
    "has_riscv_fw": true,
    "l2_status": 1,
    "maintenance_ena": 0,
+   "request": "b30101f98f",
+   "response": "01000386",
    "to": "APPLICATION"
   },
   {
@@ -83,6 +97,8 @@ window.MODEL_SPEC = {
    "has_riscv_fw": false,
    "l2_status": 1,
    "maintenance_ena": 0,
+   "request": "b30101f98f",
+   "response": "01000386",
    "to": "START_UP"
   },
   {
@@ -92,6 +108,8 @@ window.MODEL_SPEC = {
    "has_riscv_fw": true,
    "l2_status": 1,
    "maintenance_ena": 1,
+   "request": "b30103f60f",
+   "response": "01000386",
    "to": "START_UP"
   },
   {
@@ -101,6 +119,8 @@ window.MODEL_SPEC = {
    "has_riscv_fw": false,
    "l2_status": 1,
    "maintenance_ena": 1,
+   "request": "b30103f60f",
+   "response": "01000386",
    "to": "START_UP"
   },
   {
@@ -110,6 +130,8 @@ window.MODEL_SPEC = {
    "has_riscv_fw": true,
    "l2_status": 120,
    "maintenance_ena": 0,
+   "request": "b30103f60f",
+   "response": "78000590",
    "to": "START_UP"
   },
   {
@@ -119,6 +141,8 @@ window.MODEL_SPEC = {
    "has_riscv_fw": false,
    "l2_status": 120,
    "maintenance_ena": 0,
+   "request": "b30103f60f",
+   "response": "78000590",
    "to": "START_UP"
   },
   {
@@ -128,6 +152,8 @@ window.MODEL_SPEC = {
    "has_riscv_fw": true,
    "l2_status": null,
    "maintenance_ena": 1,
+   "request": null,
+   "response": null,
    "to": "APPLICATION"
   },
   {
@@ -137,6 +163,8 @@ window.MODEL_SPEC = {
    "has_riscv_fw": true,
    "l2_status": null,
    "maintenance_ena": 0,
+   "request": null,
+   "response": null,
    "to": "APPLICATION"
   },
   {
@@ -146,6 +174,8 @@ window.MODEL_SPEC = {
    "has_riscv_fw": true,
    "l2_status": 1,
    "maintenance_ena": 1,
+   "request": "b30101f98f",
+   "response": "01000386",
    "to": "APPLICATION"
   },
   {
@@ -155,6 +185,8 @@ window.MODEL_SPEC = {
    "has_riscv_fw": true,
    "l2_status": 1,
    "maintenance_ena": 0,
+   "request": "b30101f98f",
+   "response": "01000386",
    "to": "APPLICATION"
   },
   {
@@ -164,6 +196,8 @@ window.MODEL_SPEC = {
    "has_riscv_fw": true,
    "l2_status": 1,
    "maintenance_ena": 1,
+   "request": "b30103f60f",
+   "response": "01000386",
    "to": "START_UP"
   },
   {
@@ -173,18 +207,20 @@ window.MODEL_SPEC = {
    "has_riscv_fw": true,
    "l2_status": 120,
    "maintenance_ena": 0,
+   "request": "b30103f60f",
+   "response": "78000590",
    "to": "APPLICATION"
   }
  ],
  "chip_modes": [
   {
    "chip_status_flags": 4,
-   "doc": "Immutable FW (bootloader) is executing; the mutable FW is not loaded. Reported to the host as ``CHIP_STATUS.START = 1``; libtropic calls this ``LT_TR01_MAINTENANCE``.",
+   "doc": "Immutable FW (bootloader). libtropic calls this Maintenance mode.",
    "name": "START_UP"
   },
   {
    "chip_status_flags": 0,
-   "doc": "Mutable FW is loaded and executing; the full L2/L3 API is available. Reported to the host as ``CHIP_STATUS.START = 0``; libtropic calls this ``LT_TR01_APPLICATION``.",
+   "doc": "Mutable FW loaded from R-Memory; the full L2/L3 API.",
    "name": "APPLICATION"
   }
  ],
@@ -1245,19 +1281,13 @@ window.MODEL_SPEC = {
     "value": 15
    },
    {
-    "doc": "BOOTLOADER_RISCV_FW_VERSION_STR encoded as 4 bytes, without the maintenance flag - `with_maintenance_flag` adds it when reporting.",
+    "doc": "Bootloader shipped on ACAB silicon; libtropic derives the 52-byte bank header from it.",
     "hex": "00010002",
     "int_be": 65538,
     "int_le": 33554688,
     "kind": "bytes",
     "length": 4,
     "name": "BOOTLOADER_RISCV_FW_VERSION_DEFAULT"
-   },
-   {
-    "doc": "Version of the immutable RISC-V FW (bootloader) the model emulates. 2.0.1 is the bootloader shipped on ACAB silicon. The host uses this number to decide which FW bank header layout to expect, so it is not cosmetic: libtropic maps 1.0.1 to the 20-byte `lt_header_boot_v1_t` and 2.0.1 to the 52-byte `lt_header_boot_v2_t`.",
-    "kind": "str",
-    "name": "BOOTLOADER_RISCV_FW_VERSION_STR",
-    "text": "2.0.1"
    },
    {
     "doc": "Length of a transmitted certificate block",
@@ -1302,7 +1332,7 @@ window.MODEL_SPEC = {
     "value": 16
    },
    {
-    "doc": "Set in the MSB of a reported FW version word while TROPIC01 executes the immutable FW (bootloader), i.e. while the chip is in Start-up mode. The mutable FW is not loaded in that mode, so the version TROPIC01 reports is the bootloader's own; the flag is what lets the host tell the two apart.",
+    "doc": "MSB of a reported FW version, set while the bootloader answers (Start-up mode).",
     "kind": "int",
     "name": "FW_VERSION_MAINTENANCE_FLAG",
     "value": 2147483648
@@ -1371,7 +1401,7 @@ window.MODEL_SPEC = {
     "name": "SPECT_FW_VERSION_DEFAULT"
    },
    {
-    "doc": "Placeholder SPECT FW version reported in Start-up mode (0x80000000). The SPECT core runs no firmware at all before the mutable FW is loaded, so there is no version to report; the bootloader answers with this constant instead.",
+    "doc": "SPECT version in Start-up mode: the User API says \"returns dummy value\".",
     "hex": "00000080",
     "int_be": 128,
     "int_le": 2147483648,
@@ -1404,7 +1434,7 @@ window.MODEL_SPEC = {
     "signature": "(version: str) -> bytes"
    },
    {
-    "doc": "Set FW_VERSION_MAINTENANCE_FLAG on an encoded 4-byte FW version. Args: version (bytes): FW version as encoded by `encode_fw_version` Returns: the same version with its most significant bit set",
+    "doc": "Set FW_VERSION_MAINTENANCE_FLAG on an encoded 4-byte FW version. Args: version (bytes): version as encoded by `encode_fw_version` Returns: the version with its MSB set",
     "kind": "function",
     "name": "with_maintenance_flag",
     "signature": "(version: bytes) -> bytes"
@@ -2532,22 +2562,22 @@ window.MODEL_SPEC = {
  "fw_banks": {
   "bank_ids": [
    {
-    "doc": "First RISC-V CPU FW bank.",
+    "doc": "",
     "name": "FW1",
     "value": 1
    },
    {
-    "doc": "Second RISC-V CPU FW bank.",
+    "doc": "",
     "name": "FW2",
     "value": 2
    },
    {
-    "doc": "First SPECT FW bank.",
+    "doc": "",
     "name": "SPECT1",
     "value": 17
    },
    {
-    "doc": "Second SPECT FW bank.",
+    "doc": "",
     "name": "SPECT2",
     "value": 18
    }
@@ -2623,25 +2653,25 @@ window.MODEL_SPEC = {
  "get_info_objects": {
   "APPLICATION": [
    {
-    "doc": "One 128-byte block of the X.509 certificate store.",
+    "doc": "",
     "name": "X509_CERTIFICATE",
     "provider": "_object_certificate",
     "value": 0
    },
    {
-    "doc": "The chip ID. Provisioned data, identical whichever FW is running.",
+    "doc": "",
     "name": "CHIP_ID",
     "provider": "_object_chip_id",
     "value": 1
    },
    {
-    "doc": "Version of the mutable RISC-V FW - reported by that FW itself.",
+    "doc": "",
     "name": "RISCV_FW_VERSION",
     "provider": "_object_riscv_fw_version",
     "value": 2
    },
    {
-    "doc": "Version of the mutable SPECT FW.",
+    "doc": "",
     "name": "SPECT_FW_VERSION",
     "provider": "_object_spect_fw_version",
     "value": 4
@@ -2649,31 +2679,31 @@ window.MODEL_SPEC = {
   ],
   "START_UP": [
    {
-    "doc": "One 128-byte block of the X.509 certificate store.",
+    "doc": "",
     "name": "X509_CERTIFICATE",
     "provider": "_object_certificate",
     "value": 0
    },
    {
-    "doc": "The chip ID. Provisioned data, identical whichever FW is running.",
+    "doc": "",
     "name": "CHIP_ID",
     "provider": "_object_chip_id",
     "value": 1
    },
    {
-    "doc": "Version of the immutable FW, which is what answers in Start-up mode. Flagged in the MSB so the host can tell a bootloader version from an application one without a second request.",
+    "doc": "",
     "name": "RISCV_FW_VERSION",
     "provider": "_object_bootloader_version",
     "value": 2
    },
    {
-    "doc": "Placeholder SPECT version: in Start-up mode SPECT runs no FW at all. The User API is explicit - \"The SPECT bootloader is a part of RISC-V bootloader. Returns dummy value.\"",
+    "doc": "",
     "name": "SPECT_FW_VERSION",
     "provider": "_object_spect_placeholder",
     "value": 4
    },
    {
-    "doc": "Header of one mutable FW bank. Only the bootloader serves this: reading a bank means reading R-Memory behind the back of the FW executing from it. That restriction is expressed by this provider appearing only in the Start-up table, not by a check here.",
+    "doc": "",
     "name": "FW_BANK",
     "provider": "_object_fw_bank",
     "value": 176
@@ -2688,7 +2718,7 @@ window.MODEL_SPEC = {
     "START_UP"
    ],
    "name": "GET_INFO",
-   "reason": "Identification has to work before the mutable FW is trusted, otherwise a host could never find out what it is talking to. The *contents* differ per mode (see `ts_l2_get_info`), the availability does not."
+   "reason": "identification must work before the FW is trusted"
   },
   {
    "id": 2,
@@ -2696,7 +2726,7 @@ window.MODEL_SPEC = {
     "APPLICATION"
    ],
    "name": "HANDSHAKE",
-   "reason": "The Secure Channel Block is driven by the mutable FW; the bootloader has no handshake to offer. This is the entry point to the secure session and therefore to all of L3."
+   "reason": "the bootloader has no secure channel"
   },
   {
    "id": 4,
@@ -2704,7 +2734,7 @@ window.MODEL_SPEC = {
     "APPLICATION"
    ],
    "name": "ENCRYPTED_CMD",
-   "reason": "No session can exist in Start-up mode, so there is nothing to decrypt."
+   "reason": "no session, nothing to decrypt"
   },
   {
    "id": 8,
@@ -2712,7 +2742,7 @@ window.MODEL_SPEC = {
     "APPLICATION"
    ],
    "name": "ENCRYPTED_SESSION_ABT",
-   "reason": "Likewise: there is no session to abort."
+   "reason": "no session to abort"
   },
   {
    "id": 16,
@@ -2721,7 +2751,7 @@ window.MODEL_SPEC = {
     "START_UP"
    ],
    "name": "RESEND",
-   "reason": "A pure L1/L2 transport facility - it re-sends the last frame and does not care which firmware produced it."
+   "reason": "pure L1/L2 transport"
   },
   {
    "id": 32,
@@ -2729,7 +2759,7 @@ window.MODEL_SPEC = {
     "APPLICATION"
    ],
    "name": "SLEEP",
-   "reason": "Sleep is configured through CFG_SLEEP_MODE, which exists only in the application Configuration Object - the bootloader has no notion of it."
+   "reason": "CFG_SLEEP_MODE is application-CO only"
   },
   {
    "id": 162,
@@ -2738,7 +2768,7 @@ window.MODEL_SPEC = {
     "START_UP"
    ],
    "name": "GET_LOG",
-   "reason": "The bootloader keeps its own log; CFG_DEBUG.FW_LOG_EN, which gates it, is one of the three registers of the bootloader Configuration Object."
+   "reason": "CFG_DEBUG is a bootloader CO register"
   },
   {
    "id": 179,
@@ -2747,7 +2777,7 @@ window.MODEL_SPEC = {
     "START_UP"
    ],
    "name": "STARTUP",
-   "reason": "Must be available in Start-up mode, or a maintenance reboot would be a one-way trip."
+   "reason": "or maintenance mode would be a one-way trip"
   }
  ],
  "l2_status_codes": [
@@ -2802,14 +2832,14 @@ window.MODEL_SPEC = {
  ],
  "provenance": {
   "generated_file_hashes": {
-   "tvl/api/l2_api.py": "a000d72bd7757bf9",
+   "tvl/api/l2_api.py": "37691c9256df4f77",
    "tvl/api/l3_api.py": "ba443ce463aaba4a",
    "tvl/targets/model/configuration_object_impl.py": "e8cb22698ac25114"
   },
   "spec_version": 1,
   "ts_tvl_branch": "feat/startup-mode",
-  "ts_tvl_commit": "2f1d118",
-  "ts_tvl_describe": "2.3-71-g2f1d118"
+  "ts_tvl_commit": "739e494",
+  "ts_tvl_describe": "2.3-56-g739e494"
  },
  "wire_traces": [
   {

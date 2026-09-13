@@ -6,7 +6,7 @@ rule, status byte, frame layout and wire byte in the GUI comes from here, and
 this script gets all of it in one of exactly two ways:
 
 1. **Introspection** of the live objects (`ConfigurationObjectImpl`, `L2Enum`,
-   `L2_REQUEST_MODES`, `_HEADER_STRUCT`, ...) plus `ast` for the docstrings
+   `L2_REQUEST_MODES`, `_HEADER`, ...) plus `ast` for the docstrings
    Python discards at runtime.
 2. **Execution** of the real model. The boot transition table is not a
    description of `_boot()`, it is the exhaustive record of what `_boot()`
@@ -130,6 +130,9 @@ def table_reasons(source_path: pathlib.Path, table_name: str) -> Dict[str, str]:
         if (entry := re.match(r"\s*L2Enum\.(\w+):", line)) is not None:
             current = entry.group(1)
             reasons[current] = []
+            # A reason may sit on the row itself, after the value.
+            if (trailing := re.search(r"#\s?(.*)$", line)) is not None:
+                reasons[current].append(trailing.group(1).strip())
         elif (comment := re.match(r"\s*#\s?(.*)", line)) is not None:
             text = comment.group(1).strip()
             # Section banners like "--- served by both ... ---" are not reasons.
@@ -259,7 +262,7 @@ def fw_bank_layout() -> Dict[str, Any]:
     docs = attribute_docs(fw_bank_mod)
     # The header layout is a struct format string; derive the field sizes from
     # it rather than restating them, so a change to the struct shows up here.
-    fmt = fw_bank_mod._HEADER_STRUCT.format
+    fmt = fw_bank_mod._HEADER.format
     # The one place this file names something the model does not hand it: the
     # struct format carries sizes but not labels. Guarded two ways, because a
     # silent mislabel here would be exactly the drift this repo exists to stop.
@@ -305,7 +308,7 @@ def fw_bank_layout() -> Dict[str, Any]:
             for b in FwBankIdEnum
         ],
         "types": [{"name": t.name, "value": int(t.value)} for t in FwTypeEnum],
-        "default_populated": sorted(int(b) for b in FwBanks()),
+        "default_populated": sorted(int(b) for b in FwBanks().banks),
     }
 
 
@@ -346,14 +349,18 @@ def boot_transitions() -> List[Dict[str, Any]]:
             continue  # unreachable starting state for this configuration
 
         status: Optional[int] = None
+        raw_request: Optional[bytes] = None
+        raw_response: Optional[bytes] = None
         if action == "POWER_ON":
             model.power_on()
         else:
             host = Host().set_target(model)
-            response = host.send_request(
-                TsL2StartupRequest(startup_id=getattr(startup, action))
-            )
-            status = int(response.status.value)
+            # Raw bytes in, raw bytes out - the same frames the Try-it tab shows.
+            raw_request = TsL2StartupRequest(
+                startup_id=getattr(startup, action)
+            ).to_bytes()
+            raw_response = bytes(host.send_request(raw_request))
+            status = raw_response[0]
             # The restart is deferred until the host reads the response.
             read_chip_status(model)
 
@@ -366,6 +373,8 @@ def boot_transitions() -> List[Dict[str, Any]]:
                 "to": model.chip_mode.name,
                 "l2_status": status,
                 "chip_status": read_chip_status(model),
+                "request": raw_request.hex() if raw_request else None,
+                "response": raw_response.hex() if raw_response else None,
             }
         )
     return rows
@@ -553,7 +562,7 @@ def _check_version_roundtrip() -> None:
     for text in [
         C.RISCV_FW_VERSION_STR,
         C.SPECT_FW_VERSION_STR,
-        C.BOOTLOADER_RISCV_FW_VERSION_STR,
+        decode_fw_version(C.BOOTLOADER_RISCV_FW_VERSION_DEFAULT)["version"],
         "0.0.0", "1.2.3", "7.8.9-5", "2.0.1-3-dirty", "127.255.255",
     ]:
         encoded = C.encode_fw_version(text)
@@ -580,7 +589,7 @@ def decode_payload(object_id: Optional[int], payload: bytes) -> Optional[Dict[st
     """What a Get_Info payload actually means, worked out in Python.
 
     The page renders this; it does not compute it. Layouts come from the model
-    (`_HEADER_STRUCT` via `fw_bank_layout()`), not from a copy kept here.
+    (`_HEADER` via `fw_bank_layout()`), not from a copy kept here.
     """
     from tvl.api.l2_api import TsL2GetInfoRequest
 
