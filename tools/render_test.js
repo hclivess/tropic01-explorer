@@ -82,7 +82,8 @@ function run() {
   atLeast("CO registers", spec.co_registers.length, 1);
   atLeast("L2 requests", spec.l2_requests.length, 1);
   atLeast("boot transitions", spec.boot_transitions.length, 1);
-  atLeast("walkthrough scenarios", (spec.walkthroughs || { scenarios: [] }).scenarios.length, 3);
+  // Every Try-it exchange has a walkthrough, plus the two CO-gated refusals.
+  atLeast("walkthrough scenarios", (spec.walkthroughs || { scenarios: [] }).scenarios.length, spec.exchanges.length + 2);
   (spec.walkthroughs || { scenarios: [] }).scenarios.forEach((sc) =>
     atLeast("steps in '" + sc.title + "'", sc.steps.length, 5));
   atLeast("walkthrough source excerpts", Object.keys((spec.walkthroughs || { sources: {} }).sources).length, 3);

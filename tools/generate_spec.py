@@ -637,6 +637,63 @@ def decode_payload(object_id: Optional[int], payload: bytes) -> Optional[Dict[st
     return None
 
 
+def request_cases(host: Host):
+    """(group, label, params, request) for one host's ephemeral key - the list
+    the Try-it tab sends and the Walkthrough tab traces."""
+    oid = TsL2GetInfoRequest.ObjectIdEnum
+    sleep_kind = TsL2SleepRequest.SleepKindEnum
+    startup_id = TsL2StartupRequest.StartupIdEnum
+    return [
+        ("Get_Info", "X.509 certificate, block 0",
+         {"OBJECT_ID": "X509_CERTIFICATE", "BLOCK_INDEX": 0},
+         TsL2GetInfoRequest(object_id=oid.X509_CERTIFICATE, block_index=0)),
+        ("Get_Info", "X.509 certificate, block 29 (last)",
+         {"OBJECT_ID": "X509_CERTIFICATE", "BLOCK_INDEX": 29},
+         TsL2GetInfoRequest(object_id=oid.X509_CERTIFICATE, block_index=29)),
+        ("Get_Info", "X.509 certificate, block 30 (out of range)",
+         {"OBJECT_ID": "X509_CERTIFICATE", "BLOCK_INDEX": 30},
+         TsL2GetInfoRequest(object_id=oid.X509_CERTIFICATE, block_index=30)),
+        ("Get_Info", "chip ID", {"OBJECT_ID": "CHIP_ID"},
+         TsL2GetInfoRequest(object_id=oid.CHIP_ID, block_index=0)),
+        ("Get_Info", "RISC-V FW version", {"OBJECT_ID": "RISCV_FW_VERSION"},
+         TsL2GetInfoRequest(object_id=oid.RISCV_FW_VERSION, block_index=0)),
+        ("Get_Info", "SPECT FW version", {"OBJECT_ID": "SPECT_FW_VERSION"},
+         TsL2GetInfoRequest(object_id=oid.SPECT_FW_VERSION, block_index=0)),
+        *[
+            ("Get_Info", f"FW bank {bank.name}",
+             {"OBJECT_ID": "FW_BANK", "BANK_ID": bank.name},
+             TsL2GetInfoRequest(object_id=oid.FW_BANK, block_index=bank))
+            for bank in FwBankIdEnum
+        ],
+        ("Get_Info", "unknown OBJECT_ID 0x55", {"OBJECT_ID": "0x55"},
+         TsL2GetInfoRequest(object_id=0x55, block_index=0)),
+        ("Handshake", "pairing key slot 0 (written)", {"PKEY_INDEX": 0},
+         TsL2HandshakeRequest(e_hpub=host.session.create_handshake_request(),
+                              pkey_index=0)),
+        ("Handshake", "pairing key slot 3 (blank)", {"PKEY_INDEX": 3},
+         TsL2HandshakeRequest(e_hpub=host.session.create_handshake_request(),
+                              pkey_index=3)),
+        ("Session", "Encrypted_Cmd_Req with no session",
+         {"L3_CHUNK": "8 bytes of nonsense"},
+         TsL2EncryptedCmdRequest(l3_chunk=bytes(range(8)))),
+        ("Session", "Encrypted_Session_Abt", {},
+         TsL2EncryptedSessionAbtRequest()),
+        ("Transport", "Resend_Req", {}, TsL2ResendRequest()),
+        ("Transport", "Get_Log_Req", {}, TsL2GetLogRequest()),
+        ("Sleep", "SLEEP_MODE", {"SLEEP_KIND": "SLEEP_MODE"},
+         TsL2SleepRequest(sleep_kind=sleep_kind.SLEEP_MODE)),
+        ("Sleep", "invalid kind 0x77", {"SLEEP_KIND": "0x77"},
+         TsL2SleepRequest(sleep_kind=0x77)),
+        *[
+            ("Startup", sid.name, {"STARTUP_ID": sid.name},
+             TsL2StartupRequest(startup_id=sid))
+            for sid in startup_id
+        ],
+        ("Startup", "invalid id 0x99", {"STARTUP_ID": "0x99"},
+         TsL2StartupRequest(startup_id=0x99)),
+    ]
+
+
 def exchanges() -> List[Dict[str, Any]]:
     """Every request worth sending, in every mode, actually sent.
 
@@ -648,9 +705,6 @@ def exchanges() -> List[Dict[str, Any]]:
     """
     from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 
-    oid = TsL2GetInfoRequest.ObjectIdEnum
-    sleep_kind = TsL2SleepRequest.SleepKindEnum
-    startup_id = TsL2StartupRequest.StartupIdEnum
     host_priv = bytes(range(32))
     host_pub = X25519PrivateKey.from_private_bytes(host_priv).public_key().public_bytes_raw()
     tropic_priv = bytes(range(32, 64))
@@ -671,69 +725,17 @@ def exchanges() -> List[Dict[str, Any]]:
         ).set_target(model)
         return model, host
 
-    def cases(host: Host):
-        """(group, label, params, request) for one host's ephemeral key."""
-        return [
-            ("Get_Info", "X.509 certificate, block 0",
-             {"OBJECT_ID": "X509_CERTIFICATE", "BLOCK_INDEX": 0},
-             TsL2GetInfoRequest(object_id=oid.X509_CERTIFICATE, block_index=0)),
-            ("Get_Info", "X.509 certificate, block 29 (last)",
-             {"OBJECT_ID": "X509_CERTIFICATE", "BLOCK_INDEX": 29},
-             TsL2GetInfoRequest(object_id=oid.X509_CERTIFICATE, block_index=29)),
-            ("Get_Info", "X.509 certificate, block 30 (out of range)",
-             {"OBJECT_ID": "X509_CERTIFICATE", "BLOCK_INDEX": 30},
-             TsL2GetInfoRequest(object_id=oid.X509_CERTIFICATE, block_index=30)),
-            ("Get_Info", "chip ID", {"OBJECT_ID": "CHIP_ID"},
-             TsL2GetInfoRequest(object_id=oid.CHIP_ID, block_index=0)),
-            ("Get_Info", "RISC-V FW version", {"OBJECT_ID": "RISCV_FW_VERSION"},
-             TsL2GetInfoRequest(object_id=oid.RISCV_FW_VERSION, block_index=0)),
-            ("Get_Info", "SPECT FW version", {"OBJECT_ID": "SPECT_FW_VERSION"},
-             TsL2GetInfoRequest(object_id=oid.SPECT_FW_VERSION, block_index=0)),
-            *[
-                ("Get_Info", f"FW bank {bank.name}",
-                 {"OBJECT_ID": "FW_BANK", "BANK_ID": bank.name},
-                 TsL2GetInfoRequest(object_id=oid.FW_BANK, block_index=bank))
-                for bank in FwBankIdEnum
-            ],
-            ("Get_Info", "unknown OBJECT_ID 0x55", {"OBJECT_ID": "0x55"},
-             TsL2GetInfoRequest(object_id=0x55, block_index=0)),
-            ("Handshake", "pairing key slot 0 (written)", {"PKEY_INDEX": 0},
-             TsL2HandshakeRequest(e_hpub=host.session.create_handshake_request(),
-                                  pkey_index=0)),
-            ("Handshake", "pairing key slot 3 (blank)", {"PKEY_INDEX": 3},
-             TsL2HandshakeRequest(e_hpub=host.session.create_handshake_request(),
-                                  pkey_index=3)),
-            ("Session", "Encrypted_Cmd_Req with no session",
-             {"L3_CHUNK": "8 bytes of nonsense"},
-             TsL2EncryptedCmdRequest(l3_chunk=bytes(range(8)))),
-            ("Session", "Encrypted_Session_Abt", {},
-             TsL2EncryptedSessionAbtRequest()),
-            ("Transport", "Resend_Req", {}, TsL2ResendRequest()),
-            ("Transport", "Get_Log_Req", {}, TsL2GetLogRequest()),
-            ("Sleep", "SLEEP_MODE", {"SLEEP_KIND": "SLEEP_MODE"},
-             TsL2SleepRequest(sleep_kind=sleep_kind.SLEEP_MODE)),
-            ("Sleep", "invalid kind 0x77", {"SLEEP_KIND": "0x77"},
-             TsL2SleepRequest(sleep_kind=0x77)),
-            *[
-                ("Startup", sid.name, {"STARTUP_ID": sid.name},
-                 TsL2StartupRequest(startup_id=sid))
-                for sid in startup_id
-            ],
-            ("Startup", "invalid id 0x99", {"STARTUP_ID": "0x99"},
-             TsL2StartupRequest(startup_id=0x99)),
-        ]
-
     out: List[Dict[str, Any]] = []
     for mode in ChipMode:
         # How many cases there are is fixed, so build one host just to size the
         # list, then run each case on its own untouched model.
         probe_model, probe_host = fresh(mode)
-        count = len(cases(probe_host))
+        count = len(request_cases(probe_host))
         for index in range(count):
             model, host = fresh(mode)
             if model.chip_mode is not mode:
                 continue  # mode not reachable for this build
-            group, label, params, request = cases(host)[index]
+            group, label, params, request = request_cases(host)[index]
             raw_request = request.to_bytes()
             raw_response = bytes(host.send_request(raw_request))
             payload = raw_response[2:-2] if len(raw_response) >= 4 else b""
@@ -896,13 +898,14 @@ def call_traces() -> Dict[str, Any]:
         ).set_target(model)
         return model, host
 
-    oid = TsL2GetInfoRequest.ObjectIdEnum
     sid = TsL2StartupRequest.StartupIdEnum
     scenarios: List[Dict[str, Any]] = []
 
     def scenario(title: str, mode: ChipMode, request: Any, *, then_read: bool = False,
-                 r_config: Optional[Dict[str, int]] = None, note: str = "") -> None:
-        model, host = fresh(mode, r_config=r_config)
+                 r_config: Optional[Dict[str, int]] = None, note: str = "",
+                 host: Optional[Host] = None, model: Optional[Tropic01Model] = None) -> None:
+        if model is None or host is None:
+            model, host = fresh(mode, r_config=r_config)
         entry = {"title": title, "mode": mode.name, "request_class": type(request).__name__,
                  "request": request.to_bytes().hex(), "note": note}
 
@@ -918,23 +921,34 @@ def call_traces() -> Dict[str, Any]:
         record(entry, run)
         scenarios.append(entry)
 
-    scenario("Get_Info CHIP_ID in Application mode", ChipMode.APPLICATION,
-             TsL2GetInfoRequest(object_id=oid.CHIP_ID, block_index=0),
-             note="The plain path: SPI FSM, frame check, the gate, the handler, one provider.")
-    scenario("Startup_Req MAINTENANCE_REBOOT, then the read that lands it", ChipMode.APPLICATION,
-             TsL2StartupRequest(startup_id=sid.MAINTENANCE_REBOOT), then_read=True,
-             note="The handler answers and schedules; the boot itself runs on the next transaction.")
-    scenario("Handshake in Start-up mode", ChipMode.START_UP,
-             TsL2HandshakeRequest(e_hpub=bytes(32), pkey_index=0),
-             note="Refused before any handler: the gate answers UNKNOWN_REQ.")
-    scenario("Get_Info FW_BANK in Start-up mode", ChipMode.START_UP,
-             TsL2GetInfoRequest(object_id=oid.FW_BANK, block_index=FwBankIdEnum.FW1),
-             note="The Start-up table selects a provider the Application table does not have.")
-    scenario("Startup_Req MAINTENANCE_REBOOT with MAINTENANCE_ENA = 0", ChipMode.APPLICATION,
+    notes = {
+        ("APPLICATION", "Get_Info", "chip ID"):
+            "The plain path: SPI FSM, frame check, the gate, the handler, one provider.",
+        ("APPLICATION", "Startup", "MAINTENANCE_REBOOT"):
+            "The handler answers and schedules; the boot itself runs on the next transaction.",
+        ("START_UP", "Handshake", "pairing key slot 0 (written)"):
+            "Refused before any handler: the gate answers UNKNOWN_REQ.",
+        ("START_UP", "Get_Info", "FW bank FW1"):
+            "The Start-up table selects a provider the Application table does not have.",
+    }
+    # The Try-it list, every request in every mode, each on its own fresh model.
+    # A Startup_Req is followed by the read that lands the restart, so the boot
+    # shows up in the trace and not only in mode_after.
+    for mode in ChipMode:
+        count = len(request_cases(fresh(mode)[1]))
+        for index in range(count):
+            model, host = fresh(mode)
+            group, label, _, request = request_cases(host)[index]
+            scenario(f"{group} · {label}", mode, request, model=model, host=host,
+                     then_read=group == "Startup",
+                     note=notes.get((mode.name, group, label), ""))
+    # The two Configuration Object gates, which the Try-it list (all-ones
+    # config) cannot reach.
+    scenario("Startup · MAINTENANCE_REBOOT with CFG_START_UP.MAINTENANCE_ENA = 0", ChipMode.APPLICATION,
              TsL2StartupRequest(startup_id=sid.MAINTENANCE_REBOOT),
              r_config={"cfg_start_up": 0xFFFF_FFF7},
              note="Refused from the handler, as the firmware does; nothing is scheduled.")
-    scenario("Get_Log_Req with CFG_DEBUG.FW_LOG_EN = 0", ChipMode.APPLICATION,
+    scenario("Transport · Get_Log_Req with CFG_DEBUG.FW_LOG_EN = 0", ChipMode.APPLICATION,
              TsL2GetLogRequest(), r_config={"cfg_debug": 0xFFFF_FFFE},
              note="A Configuration Object gate: RESP_DISABLED with no payload.")
 

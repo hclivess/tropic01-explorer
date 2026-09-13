@@ -1170,7 +1170,18 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
   const WK = S.walkthroughs || { scenarios: [], sources: {} };
   const walk = { i: 0, key: 0 };
   const wpick = $("walk-pick");
-  WK.scenarios.forEach((sc, i) => wpick.append(el("option", { value: String(i), textContent: sc.title })));
+  if (!S.walkthroughs) {
+    // index.html and model_spec.js are cached separately by GitHub Pages; a
+    // fresh page next to a stale spec shows an empty picker without this.
+    $("walk-note").textContent = "model_spec.js is older than this page (browser cache) - hard-reload (Ctrl+Shift+R).";
+  }
+  // One <optgroup> per mode; scenario order is the Try-it list's, so the two
+  // tabs read the same way.
+  const groups = {};
+  WK.scenarios.forEach((sc, i) => {
+    if (!groups[sc.mode]) { groups[sc.mode] = el("optgroup", { label: "in " + sc.mode + " mode" }); wpick.append(groups[sc.mode]); }
+    groups[sc.mode].append(el("option", { value: String(i), textContent: sc.title }));
+  });
   wpick.onchange = () => { walk.key = Number(wpick.value); walk.i = 0; buildWalk(); renderWalk(); };
 
   // Built once per scenario; stepping only moves the highlight, so the list is
