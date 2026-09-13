@@ -55,15 +55,13 @@ const watchdog = setTimeout(() => {
 }, 30000);
 dom.window.addEventListener("load", () => {
   clearTimeout(watchdog);
-  try {
-    run();
-  } catch (e) {
+  run().catch((e) => {
     console.error("render test crashed mid-way: " + ((e && e.stack) || e));
     process.exit(1);
-  }
+  });
 });
 
-function run() {
+async function run() {
   const d = dom.window.document;
   const n = (sel) => d.querySelectorAll(sel).length;
 
@@ -388,6 +386,17 @@ function run() {
     check("run to end lands on the last step", cur(), sc.steps.length - 1);
     d.getElementById("walk-reset").click();
     check("reset returns to the first step", cur(), 0);
+    // play advances on its own at the picked pace, and a manual step stops it
+    const speed = d.getElementById("walk-speed"); speed.value = "250";
+    d.getElementById("walk-play").click();
+    check("play button reads pause while playing", d.getElementById("walk-play").textContent.includes("pause"), true);
+    await new Promise((r) => setTimeout(r, 650));
+    check("play advanced two steps in 650 ms at 250 ms", cur(), 2);
+    d.getElementById("walk-back").click();
+    check("a manual step stops play", d.getElementById("walk-play").textContent.includes("play"), true);
+    const at = cur();
+    await new Promise((r) => setTimeout(r, 400));
+    check("nothing moves after play is stopped", cur(), at);
     // switching scenario must rebuild the list for THAT scenario
     const pick = d.getElementById("walk-pick");
     if (W.scenarios.length > 1) {
@@ -405,4 +414,5 @@ function run() {
     process.exit(1);
   }
   console.log("all checks passed");
+  process.exit(0);   // jsdom timers would otherwise keep the process alive
 }

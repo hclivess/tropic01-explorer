@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TROPIC01 Explorer</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230e1116'/%3E%3Cg fill='%238b97a6'%3E%3Crect x='3' y='9' width='4' height='2'/%3E%3Crect x='3' y='15' width='4' height='2'/%3E%3Crect x='3' y='21' width='4' height='2'/%3E%3Crect x='25' y='9' width='4' height='2'/%3E%3Crect x='25' y='15' width='4' height='2'/%3E%3Crect x='25' y='21' width='4' height='2'/%3E%3Crect x='9' y='3' width='2' height='4'/%3E%3Crect x='15' y='3' width='2' height='4'/%3E%3Crect x='21' y='3' width='2' height='4'/%3E%3Crect x='9' y='25' width='2' height='4'/%3E%3Crect x='15' y='25' width='2' height='4'/%3E%3Crect x='21' y='25' width='2' height='4'/%3E%3C/g%3E%3Crect x='7' y='7' width='18' height='18' rx='2' fill='%23c9a227'/%3E%3Crect x='11' y='11' width='10' height='10' rx='1' fill='%230e1116'/%3E%3C/svg%3E">
 <style>
 :root {
   --bg: #0e1116; --panel: #161b22; --edge: #272e37; --edge2: #3a434f;
@@ -353,6 +354,12 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
           <button id="walk-reset" title="back to the first step">⏮ reset</button>
           <button id="walk-back" title="previous step">◀ back</button>
           <button id="walk-next" title="next step">next ▶</button>
+          <button id="walk-play" title="step automatically at the chosen pace">▶ play</button>
+          <select id="walk-speed" title="pace of play">
+            <option value="1500">slow · 1.5 s</option>
+            <option value="700" selected>medium · 0.7 s</option>
+            <option value="250">fast · 0.25 s</option>
+          </select>
           <button id="walk-run" title="run to the end">run to end ⏭</button>
         </div>
       </div>
@@ -1182,7 +1189,7 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
     if (!groups[sc.mode]) { groups[sc.mode] = el("optgroup", { label: "in " + sc.mode + " mode" }); wpick.append(groups[sc.mode]); }
     groups[sc.mode].append(el("option", { value: String(i), textContent: sc.title }));
   });
-  wpick.onchange = () => { walk.key = Number(wpick.value); walk.i = 0; buildWalk(); renderWalk(); };
+  wpick.onchange = () => { stopPlay(); walk.key = Number(wpick.value); walk.i = 0; buildWalk(); renderWalk(); };
 
   // Built once per scenario; stepping only moves the highlight, so the list is
   // never replaced under the pointer and the scroll position survives.
@@ -1230,10 +1237,28 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
     const lit = pane.querySelector(".srcline.cur");
     if (lit && lit.scrollIntoView) lit.scrollIntoView({ block: "center" });
   }
-  $("walk-next").onclick = () => { walk.i = Math.min(walk.i + 1, WK.scenarios[walk.key].steps.length - 1); renderWalk(); };
-  $("walk-back").onclick = () => { walk.i = Math.max(walk.i - 1, 0); renderWalk(); };
-  $("walk-run").onclick = () => { walk.i = WK.scenarios[walk.key].steps.length - 1; renderWalk(); };
-  $("walk-reset").onclick = () => { walk.i = 0; renderWalk(); };
+  const last = () => WK.scenarios[walk.key].steps.length - 1;
+  // Play: one step per tick at the picked pace; stops at the end, and any
+  // manual control stops it too so the cursor never moves under the pointer.
+  let timer = null;
+  function stopPlay() {
+    if (timer) { clearInterval(timer); timer = null; }
+    $("walk-play").textContent = "▶ play";
+  }
+  function startPlay() {
+    if (walk.i >= last()) walk.i = 0;
+    $("walk-play").textContent = "❚❚ pause";
+    timer = setInterval(() => {
+      walk.i = Math.min(walk.i + 1, last()); renderWalk();
+      if (walk.i >= last()) stopPlay();
+    }, Number($("walk-speed").value));
+  }
+  $("walk-play").onclick = () => (timer ? stopPlay() : startPlay());
+  $("walk-speed").onchange = () => { if (timer) { stopPlay(); startPlay(); } };
+  $("walk-next").onclick = () => { stopPlay(); walk.i = Math.min(walk.i + 1, last()); renderWalk(); };
+  $("walk-back").onclick = () => { stopPlay(); walk.i = Math.max(walk.i - 1, 0); renderWalk(); };
+  $("walk-run").onclick = () => { stopPlay(); walk.i = last(); renderWalk(); };
+  $("walk-reset").onclick = () => { stopPlay(); walk.i = 0; renderWalk(); };
   buildWalk(); renderWalk();
 
   /* ================= EXAMPLES ================= */
