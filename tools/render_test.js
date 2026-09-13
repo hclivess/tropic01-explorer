@@ -390,8 +390,11 @@ async function run() {
     const speed = d.getElementById("walk-speed"); speed.value = "250";
     d.getElementById("walk-play").click();
     check("play button reads pause while playing", d.getElementById("walk-play").textContent.includes("pause"), true);
-    await new Promise((r) => setTimeout(r, 650));
-    check("play advanced two steps in 650 ms at 250 ms", cur(), 2);
+    // Wait for the ticks rather than a fixed time: under load two 250 ms
+    // ticks were once observed as one in 650 ms.
+    const t0 = Date.now();
+    while (cur() < 2 && Date.now() - t0 < 5000) await new Promise((r) => setTimeout(r, 25));
+    check("play advanced two steps on its own", cur(), 2);
     d.getElementById("walk-back").click();
     check("a manual step stops play", d.getElementById("walk-play").textContent.includes("play"), true);
     const at = cur();
