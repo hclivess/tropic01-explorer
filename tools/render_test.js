@@ -80,8 +80,8 @@ async function run() {
   atLeast("CO registers", spec.co_registers.length, 1);
   atLeast("L2 requests", spec.l2_requests.length, 1);
   atLeast("boot transitions", spec.boot_transitions.length, 1);
-  // Every Try-it exchange has a walkthrough, plus the two CO-gated refusals.
-  atLeast("walkthrough scenarios", (spec.walkthroughs || { scenarios: [] }).scenarios.length, spec.exchanges.length + 2);
+  // Every Try-it exchange has a walkthrough - same list, same run.
+  atLeast("walkthrough scenarios", (spec.walkthroughs || { scenarios: [] }).scenarios.length, spec.exchanges.length);
   (spec.walkthroughs || { scenarios: [] }).scenarios.forEach((sc) =>
     atLeast("steps in '" + sc.title + "'", sc.steps.length, 5));
   atLeast("walkthrough source excerpts", Object.keys((spec.walkthroughs || { sources: {} }).sources).length, 3);
@@ -368,10 +368,13 @@ async function run() {
 
   // the walkthrough must step through the captured trace, not a description
   {
-    const W = spec.walkthroughs; const sc = W.scenarios[0];
-    check("walkthrough picker lists every scenario",
-      d.querySelectorAll("#walk-pick option").length, W.scenarios.length);
-    check("walkthrough renders every step of the first scenario",
+    const W = spec.walkthroughs;
+    // The trace follows the Try-it picker: whatever request and mode are shown.
+    const shownKey = d.getElementById("try-pick").value;
+    const shownMode = [...d.querySelectorAll("#try-mode button")].find((b) => b.getAttribute("aria-pressed") === "true").textContent;
+    const sc = W.scenarios.find((x) => x.mode === shownMode && x.group + " · " + x.label === shownKey);
+    check("a trace exists for the request Try it is showing", !!sc, true);
+    check("walkthrough renders every step of that trace",
       d.querySelectorAll("#walk-steps .wstep").length, sc.steps.length);
     const cur = () => [...d.querySelectorAll("#walk-steps .wstep")].findIndex((r) => r.classList.contains("cur"));
     check("walkthrough starts at step 1", cur(), 0);
@@ -384,8 +387,13 @@ async function run() {
       d.querySelectorAll("#walk-src .srcline.cur").length, 1);
     d.getElementById("walk-run").click();
     check("run to end lands on the last step", cur(), sc.steps.length - 1);
-    d.getElementById("walk-reset").click();
-    check("reset returns to the first step", cur(), 0);
+    // no reset button: play from the last step restarts at the first
+    d.getElementById("walk-play").click();
+    check("play from the end restarts at the first step", cur() <= 1, true);
+    d.getElementById("walk-play").click();   // pause again (back is disabled at step 1)
+    check("play toggles back to play when paused", d.getElementById("walk-play").textContent.includes("play"), true);
+    d.getElementById("walk-next").click(); d.getElementById("walk-back").click(); d.getElementById("walk-back").click();
+    check("back stops at the first step", cur(), 0);
     // play advances on its own at the picked pace, and a manual step stops it
     const speed = d.getElementById("walk-speed"); speed.value = "250";
     d.getElementById("walk-play").click();
@@ -400,13 +408,14 @@ async function run() {
     const at = cur();
     await new Promise((r) => setTimeout(r, 400));
     check("nothing moves after play is stopped", cur(), at);
-    // switching scenario must rebuild the list for THAT scenario
-    const pick = d.getElementById("walk-pick");
-    if (W.scenarios.length > 1) {
-      pick.value = "1"; pick.dispatchEvent(new dom.window.Event("change"));
-      check("changing scenario rebuilds the step list",
-        d.querySelectorAll("#walk-steps .wstep").length, W.scenarios[1].steps.length);
-    }
+    // changing the Try-it request must rebuild the trace for THAT request
+    const pick = d.getElementById("try-pick");
+    const other = [...pick.options].find((o) => o.value !== shownKey);
+    pick.value = other.value; pick.dispatchEvent(new dom.window.Event("change"));
+    const sc2 = W.scenarios.find((x) => x.mode === shownMode && x.group + " · " + x.label === other.value);
+    check("changing the request rebuilds the step list",
+      d.querySelectorAll("#walk-steps .wstep").length, sc2.steps.length);
+    check("the trace note names the request class", d.getElementById("walk-note").textContent.includes(sc2.request_class), true);
   }
 
   // the boot table's status note is computed from the capture, not typed
@@ -414,6 +423,8 @@ async function run() {
     d.getElementById("boot-status-note").textContent.includes("UNKNOWN_REQ") &&
     d.querySelectorAll("#boot-status-note button.linkish").length === 1, true);
 
+  check("six tabs", n("#tabs button"), 6);
+  check("how-it-works is a collapsible under the header", !!d.querySelector("header details#about-box #about"), true);
   check("errors after interaction", errors.length, 0);
 
   console.log();

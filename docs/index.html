@@ -179,6 +179,10 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
 <header>
   <h1>TROPIC01 Explorer <span id="live-badge" class="tag hot" hidden>LIVE</span></h1>
   <div class="sub" id="prov"></div>
+  <details id="about-box">
+    <summary class="sub">How it works — why this page cannot drift from the model</summary>
+    <div class="panel" id="about"></div>
+  </details>
 </header>
 
 <nav id="tabs"></nav>
@@ -269,6 +273,17 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
     branch.
   </p>
   <div class="panel scroll" id="t-oid"></div>
+  <h2>Get_Info(FW_BANK) — the bank header</h2>
+  <p class="note">
+    Two banks per firmware is what makes a fail-safe update possible: the new
+    image goes to the inactive bank and is only then activated. The header is
+    readable only in Start-up mode, via <code>Get_Info(FW_BANK)</code>. The
+    <span id="fw-size"></span> offsets below are derived from the model's own <code>struct</code> format
+    string, so they cannot disagree with what it packs.
+  </p>
+  <div class="panel" id="fwhdr"></div>
+  <h2>Bank IDs</h2>
+  <div class="panel scroll"><div id="t-banks"></div></div>
 </section>
 
 <section id="tab-try" hidden>
@@ -320,8 +335,7 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
     </p>
     <div class="act">
       <button id="live-send">send this request for real</button>
-      <button id="live-power-on">power on</button>
-      <button id="live-power-off">power off</button>
+      <button id="live-power">power off</button>
     </div>
     <div id="live-out"></div>
   </div>
@@ -329,36 +343,20 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
     <div class="panel" id="try-main"></div>
     <div class="panel" id="try-other"></div>
   </div>
-  <h2>A scripted session</h2>
+  <h2>How the code got there</h2>
   <p class="note">
-    The same machinery run as a sequence rather than one-off. Determinism is
-    forced — the RNG is pinned and the busy simulation disabled — which is why
-    two handshakes give identical bytes. On silicon that would be alarming;
-    here it is the proof that nothing is floating.
-  </p>
-  <div id="wire"></div>
-</section>
-
-<section id="tab-walk" hidden>
-  <h2>Code walkthrough</h2>
-  <p class="note">
-    How the model's code actually traverses for one request. Each scenario was
-    run under Python's tracer and every call into, and return out of, the model's
-    own modules was recorded — file, function, line, and what came back. Step
-    through it like a debugger; the pane on the right shows the source of the
-    function the current step is in. Nothing here is described by hand: the steps
-    are the record, the source is the file.
+    The same request, traced. It was run under Python's tracer and every call
+    into, and return out of, the model's own modules was recorded — file,
+    function, line, and what came back. Step through it like a debugger; the
+    pane on the right shows the source of the function the current step is in.
+    Nothing here is described by hand: the steps are the record, the source is
+    the file.
   </p>
   <div class="panel">
     <div class="controls">
-      <div class="ctl" style="flex:1 1 320px">
-        <label>Scenario</label>
-        <select id="walk-pick"></select>
-      </div>
       <div class="ctl">
         <label>Step</label>
         <div class="act">
-          <button id="walk-reset" title="back to the first step">⏮ reset</button>
           <button id="walk-back" title="previous step">◀ back</button>
           <button id="walk-next" title="next step">next ▶</button>
           <button id="walk-play" title="step automatically at the chosen pace">▶ play</button>
@@ -378,6 +376,14 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
       <div class="walk-src" id="walk-src"></div>
     </div>
   </div>
+  <h2>A scripted session</h2>
+  <p class="note">
+    The same machinery run as a sequence rather than one-off. Determinism is
+    forced — the RNG is pinned and the busy simulation disabled — which is why
+    two handshakes give identical bytes. On silicon that would be alarming;
+    here it is the proof that nothing is floating.
+  </p>
+  <div id="wire"></div>
 </section>
 
 <section id="tab-examples" hidden>
@@ -389,20 +395,6 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
   </p>
   <p class="note" id="ex-note"></p>
   <div id="examples"></div>
-</section>
-
-<section id="tab-fw" hidden>
-  <h2>Firmware bank header</h2>
-  <p class="note">
-    Two banks per firmware is what makes a fail-safe update possible: the new
-    image goes to the inactive bank and is only then activated. The header is
-    readable only in Start-up mode, via <code>Get_Info(FW_BANK)</code>. The
-    <span id="fw-size"></span> offsets below are derived from the model's own <code>struct</code> format
-    string, so they cannot disagree with what it packs.
-  </p>
-  <div class="panel" id="fwhdr"></div>
-  <h2>Bank IDs</h2>
-  <div class="panel scroll"><div id="t-banks"></div></div>
 </section>
 
 <section id="tab-constants" hidden>
@@ -436,11 +428,6 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
     little-endian. These are its real outputs, not a description of them.
   </p>
   <div class="panel scroll" id="const-versions"></div>
-</section>
-
-<section id="tab-about" hidden>
-  <h2>Why this cannot drift</h2>
-  <div class="panel" id="about"></div>
 </section>
 
 <footer id="foot"></footer>
@@ -480,9 +467,10 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
   /* ---------- tabs ---------- */
   const TABS = [
     ["boot", "Boot"], ["co", "Configuration Object"], ["l2", "L2 API"],
-    ["try", "Try it"], ["walk", "Walkthrough"], ["examples", "Examples"], ["fw", "FW banks"],
-    ["constants", "Constants"], ["about", "How it works"],
+    ["try", "Try it"], ["examples", "Examples"], ["constants", "Constants"],
   ];
+  // Old anchors keep working: those tabs were folded, not removed.
+  const TAB_ALIASES = { walk: "try", fw: "l2", about: "boot" };
   const nav = $("tabs");
   TABS.forEach(([id, label], i) => {
     const b = el("button", { textContent: label });
@@ -496,8 +484,10 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
     };
     nav.append(b);
   });
-  const initial = TABS.findIndex(([id]) => "#" + id === location.hash);
+  const wanted = TAB_ALIASES[location.hash.slice(1)] || location.hash.slice(1);
+  const initial = TABS.findIndex(([id]) => id === wanted);
   if (initial > 0) nav.children[initial].click();
+  if (location.hash === "#about") $("about-box").open = true;
 
   const table = (head, rows) => {
     const t = el("table");
@@ -688,7 +678,8 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
       r.from,
       // Every reboot row is also a Try-it exchange; link straight to its bytes.
       r.action === "POWER_ON" ? r.action
-        : tryLink(r.action, (e) => (e.params || {}).STARTUP_ID === r.action, r.from),
+        : tryLink(r.action, (e) => (e.params || {}).STARTUP_ID === r.action &&
+                                    ((e.params || {}).MAINTENANCE_ENA ?? 1) === r.maintenance_ena, r.from),
       String(r.maintenance_ena), r.has_riscv_fw ? "yes" : "no",
       tag(r.to === "START_UP" ? "boot" : "app", r.to),
       r.l2_status === null ? "—" :
@@ -968,6 +959,7 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
     const b = exchange(other, tryState.key);
     renderPane($("try-main"), a, true, b);
     renderPane($("try-other"), b, false, a);
+    if (typeof syncWalk === "function" && WK_READY) syncWalk();
   }
 
   /* ================= LIVE MODE ================= */
@@ -1013,8 +1005,7 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
       where.append(tag("no", "powered off"));
     }
     $("live-send").disabled = !health.powered;
-    $("live-power-on").disabled = health.powered;
-    $("live-power-off").disabled = !health.powered;
+    $("live-power").textContent = health.powered ? "power off" : "power on";
   }
 
   function renderLiveResult(result, error) {
@@ -1095,8 +1086,7 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
         renderLiveResult(null, String(err));
       }
     };
-    $("live-power-on").onclick = power(true);
-    $("live-power-off").onclick = power(false);
+    $("live-power").onclick = () => power(!live.powered)();
   }
 
   // Jump to Try it showing the first exchange that satisfies `match`, in the
@@ -1194,28 +1184,31 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
   });
 
   /* ================= WALKTHROUGH ================= */
+  var WK_READY = true;
   const WK = S.walkthroughs || { scenarios: [], sources: {} };
-  const walk = { i: 0, key: 0 };
-  const wpick = $("walk-pick");
+  const walk = { i: 0, key: -1 };
   if (!S.walkthroughs) {
     // index.html and model_spec.js are cached separately by GitHub Pages; a
-    // fresh page next to a stale spec shows an empty picker without this.
+    // fresh page next to a stale spec shows nothing here without this.
     $("walk-note").textContent = "model_spec.js is older than this page (browser cache) - hard-reload (Ctrl+Shift+R).";
   }
-  // One <optgroup> per mode; scenario order is the Try-it list's, so the two
-  // tabs read the same way.
-  const groups = {};
-  WK.scenarios.forEach((sc, i) => {
-    if (!groups[sc.mode]) { groups[sc.mode] = el("optgroup", { label: "in " + sc.mode + " mode" }); wpick.append(groups[sc.mode]); }
-    groups[sc.mode].append(el("option", { value: String(i), textContent: sc.title }));
-  });
-  wpick.onchange = () => { stopPlay(); walk.key = Number(wpick.value); walk.i = 0; buildWalk(); renderWalk(); };
+  // The scenario is whatever Try it is showing: same mode, same request. The
+  // two were captured from the same list, so the bytes above and the calls
+  // below are one run each.
+  function currentScenario() {
+    return WK.scenarios.findIndex((sc) => sc.mode === st.mode && sc.group + " · " + sc.label === tryState.key);
+  }
+  function syncWalk() {
+    const key = currentScenario();
+    if (key === walk.key) return;
+    stopPlay(); walk.key = key; walk.i = 0; buildWalk(); renderWalk();
+  }
 
   // Built once per scenario; stepping only moves the highlight, so the list is
   // never replaced under the pointer and the scroll position survives.
   function buildWalk() {
     const sc = WK.scenarios[walk.key]; const box = $("walk-steps"); box.innerHTML = "";
-    if (!sc) return;
+    if (!sc) { $("walk-note").textContent = "no trace captured for this request in this mode"; $("walk-pos").textContent = ""; $("walk-src").innerHTML = ""; return; }
     $("walk-note").textContent = sc.note + "   ·   " + sc.request_class + " in " + sc.mode + " → mode after: " + sc.mode_after;
     sc.steps.forEach((st, i) => {
       const row = el("div", { className: "wstep" + (st.event === "return" ? " ret" : "") });
@@ -1275,7 +1268,7 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
     $("walk-play").textContent = "▶ play";
   }
   function startPlay() {
-    if (walk.i >= last()) walk.i = 0;
+    if (walk.i >= last()) { walk.i = 0; renderWalk(); }   // play from the end restarts
     $("walk-play").textContent = "❚❚ pause";
     timer = setInterval(() => {
       walk.i = Math.min(walk.i + 1, last()); renderWalk();
@@ -1287,8 +1280,7 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
   $("walk-next").onclick = () => { stopPlay(); walk.i = Math.min(walk.i + 1, last()); renderWalk(); };
   $("walk-back").onclick = () => { stopPlay(); walk.i = Math.max(walk.i - 1, 0); renderWalk(); };
   $("walk-run").onclick = () => { stopPlay(); walk.i = last(); renderWalk(); };
-  $("walk-reset").onclick = () => { stopPlay(); walk.i = 0; renderWalk(); };
-  buildWalk(); renderWalk();
+  syncWalk();
 
   /* ================= EXAMPLES ================= */
   // Minimal Python colouring. Cosmetic only - it never changes a byte, and it

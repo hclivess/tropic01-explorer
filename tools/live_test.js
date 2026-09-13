@@ -64,13 +64,13 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
   // Power off must actually change state, and must disable sending. This is the
   // assertion that would have caught the power buttons silently issuing GETs.
-  $("live-power-off").click();
+  $("live-power").click();          // reads "power off" while powered
   await wait(900);
   check("power off is reflected",
     $("live-mode").textContent.includes("powered off"), true);
   check("power off disables sending", $("live-send").disabled, true);
 
-  $("live-power-on").click();
+  $("live-power").click();          // now reads "power on"
   await wait(1200);
   check("power on restores a mode",
     /APPLICATION|START_UP/.test($("live-mode").textContent), true);

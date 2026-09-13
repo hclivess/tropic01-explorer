@@ -691,7 +691,20 @@ def request_cases(host: Host):
         ],
         ("Startup", "invalid id 0x99", {"STARTUP_ID": "0x99"},
          TsL2StartupRequest(startup_id=0x99)),
+        # The two Configuration Object gates. An all-ones config never reaches
+        # them, so each carries the R-config that clears its bit.
+        ("Startup", "MAINTENANCE_REBOOT with CFG_START_UP.MAINTENANCE_ENA = 0",
+         {"STARTUP_ID": "MAINTENANCE_REBOOT", "MAINTENANCE_ENA": 0},
+         TsL2StartupRequest(startup_id=startup_id.MAINTENANCE_REBOOT),
+         {"cfg_start_up": 0xFFFF_FFF7}),
+        ("Transport", "Get_Log_Req with CFG_DEBUG.FW_LOG_EN = 0", {"FW_LOG_EN": 0},
+         TsL2GetLogRequest(), {"cfg_debug": 0xFFFF_FFFE}),
     ]
+
+
+def case_config(case: tuple) -> Optional[Dict[str, int]]:
+    """The R-config a case wants, or None for the all-ones default."""
+    return case[4] if len(case) > 4 else None
 
 
 def exchanges() -> List[Dict[str, Any]]:
@@ -710,10 +723,11 @@ def exchanges() -> List[Dict[str, Any]]:
     tropic_priv = bytes(range(32, 64))
     tropic_pub = X25519PrivateKey.from_private_bytes(tropic_priv).public_key().public_bytes_raw()
 
-    def fresh(mode: ChipMode):
+    def fresh(mode: ChipMode, r_config: Optional[Dict[str, int]] = None):
         model = Tropic01Model(
             debug_random_value=bytes(4), busy_iter=[False],
             s_t_priv=tropic_priv, s_t_pub=tropic_pub,
+            **({"r_config": ConfigurationObjectImpl.from_dict(r_config)} if r_config else {}),
         )
         model.i_pairing_keys[0].write(host_pub)
         model.power_on()
@@ -727,15 +741,14 @@ def exchanges() -> List[Dict[str, Any]]:
 
     out: List[Dict[str, Any]] = []
     for mode in ChipMode:
-        # How many cases there are is fixed, so build one host just to size the
-        # list, then run each case on its own untouched model.
-        probe_model, probe_host = fresh(mode)
-        count = len(request_cases(probe_host))
-        for index in range(count):
-            model, host = fresh(mode)
+        # The list is fixed, so build one host just to read it, then run each
+        # case on its own untouched model - with that case's R-config, if any.
+        probe = request_cases(fresh(mode)[1])
+        for index in range(len(probe)):
+            model, host = fresh(mode, case_config(probe[index]))
             if model.chip_mode is not mode:
                 continue  # mode not reachable for this build
-            group, label, params, request = request_cases(host)[index]
+            group, label, params, request = request_cases(host)[index][:4]
             raw_request = request.to_bytes()
             raw_response = bytes(host.send_request(raw_request))
             payload = raw_response[2:-2] if len(raw_response) >= 4 else b""
@@ -898,16 +911,18 @@ def call_traces() -> Dict[str, Any]:
         ).set_target(model)
         return model, host
 
-    sid = TsL2StartupRequest.StartupIdEnum
     scenarios: List[Dict[str, Any]] = []
 
     def scenario(title: str, mode: ChipMode, request: Any, *, then_read: bool = False,
                  r_config: Optional[Dict[str, int]] = None, note: str = "",
-                 host: Optional[Host] = None, model: Optional[Tropic01Model] = None) -> None:
+                 host: Optional[Host] = None, model: Optional[Tropic01Model] = None,
+                 group: str = "", label: str = "") -> None:
         if model is None or host is None:
             model, host = fresh(mode, r_config=r_config)
+        # group/label match the Try-it exchange this scenario belongs to.
         entry = {"title": title, "mode": mode.name, "request_class": type(request).__name__,
-                 "request": request.to_bytes().hex(), "note": note}
+                 "request": request.to_bytes().hex(), "note": note,
+                 "group": group, "label": label}
 
         def run() -> None:
             entry["response"] = bytes(host.send_request(request.to_bytes())).hex()
@@ -926,6 +941,10 @@ def call_traces() -> Dict[str, Any]:
             "The plain path: SPI FSM, frame check, the gate, the handler, one provider.",
         ("APPLICATION", "Startup", "MAINTENANCE_REBOOT"):
             "The handler answers and schedules; the boot itself runs on the next transaction.",
+        ("APPLICATION", "Startup", "MAINTENANCE_REBOOT with CFG_START_UP.MAINTENANCE_ENA = 0"):
+            "Refused from the handler, as the firmware does; nothing is scheduled.",
+        ("APPLICATION", "Transport", "Get_Log_Req with CFG_DEBUG.FW_LOG_EN = 0"):
+            "A Configuration Object gate: RESP_DISABLED with no payload.",
         ("START_UP", "Handshake", "pairing key slot 0 (written)"):
             "Refused before any handler: the gate answers UNKNOWN_REQ.",
         ("START_UP", "Get_Info", "FW bank FW1"):
@@ -935,22 +954,14 @@ def call_traces() -> Dict[str, Any]:
     # A Startup_Req is followed by the read that lands the restart, so the boot
     # shows up in the trace and not only in mode_after.
     for mode in ChipMode:
-        count = len(request_cases(fresh(mode)[1]))
-        for index in range(count):
-            model, host = fresh(mode)
-            group, label, _, request = request_cases(host)[index]
+        probe = request_cases(fresh(mode)[1])
+        for index in range(len(probe)):
+            model, host = fresh(mode, r_config=case_config(probe[index]))
+            group, label, _, request = request_cases(host)[index][:4]
             scenario(f"{group} · {label}", mode, request, model=model, host=host,
                      then_read=group == "Startup",
-                     note=notes.get((mode.name, group, label), ""))
-    # The two Configuration Object gates, which the Try-it list (all-ones
-    # config) cannot reach.
-    scenario("Startup · MAINTENANCE_REBOOT with CFG_START_UP.MAINTENANCE_ENA = 0", ChipMode.APPLICATION,
-             TsL2StartupRequest(startup_id=sid.MAINTENANCE_REBOOT),
-             r_config={"cfg_start_up": 0xFFFF_FFF7},
-             note="Refused from the handler, as the firmware does; nothing is scheduled.")
-    scenario("Transport · Get_Log_Req with CFG_DEBUG.FW_LOG_EN = 0", ChipMode.APPLICATION,
-             TsL2GetLogRequest(), r_config={"cfg_debug": 0xFFFF_FFFE},
-             note="A Configuration Object gate: RESP_DISABLED with no payload.")
+                     note=notes.get((mode.name, group, label), ""),
+                     group=group, label=label)
 
     for sc in scenarios:
         if len(sc["steps"]) < 3:

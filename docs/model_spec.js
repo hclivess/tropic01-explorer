@@ -2101,6 +2101,41 @@ window.MODEL_SPEC = {
    "status": 127
   },
   {
+   "chip_status_after": 5,
+   "decoded": null,
+   "group": "Startup",
+   "label": "MAINTENANCE_REBOOT with CFG_START_UP.MAINTENANCE_ENA = 0",
+   "mode": "START_UP",
+   "mode_after": "START_UP",
+   "object_id": null,
+   "params": {
+    "MAINTENANCE_ENA": 0,
+    "STARTUP_ID": "MAINTENANCE_REBOOT"
+   },
+   "request": "b30103f60f",
+   "request_class": "TsL2StartupRequest",
+   "request_id": 179,
+   "response": "78000590",
+   "status": 120
+  },
+  {
+   "chip_status_after": 5,
+   "decoded": null,
+   "group": "Transport",
+   "label": "Get_Log_Req with CFG_DEBUG.FW_LOG_EN = 0",
+   "mode": "START_UP",
+   "mode_after": "START_UP",
+   "object_id": null,
+   "params": {
+    "FW_LOG_EN": 0
+   },
+   "request": "a200094c",
+   "request_class": "TsL2GetLogRequest",
+   "request_id": 162,
+   "response": "78000590",
+   "status": 120
+  },
+  {
    "chip_status_after": 1,
    "decoded": {
     "kind": "certificate",
@@ -2511,6 +2546,41 @@ window.MODEL_SPEC = {
    "request_id": 179,
    "response": "7f000602",
    "status": 127
+  },
+  {
+   "chip_status_after": 1,
+   "decoded": null,
+   "group": "Startup",
+   "label": "MAINTENANCE_REBOOT with CFG_START_UP.MAINTENANCE_ENA = 0",
+   "mode": "APPLICATION",
+   "mode_after": "APPLICATION",
+   "object_id": null,
+   "params": {
+    "MAINTENANCE_ENA": 0,
+    "STARTUP_ID": "MAINTENANCE_REBOOT"
+   },
+   "request": "b30103f60f",
+   "request_class": "TsL2StartupRequest",
+   "request_id": 179,
+   "response": "78000590",
+   "status": 120
+  },
+  {
+   "chip_status_after": 1,
+   "decoded": null,
+   "group": "Transport",
+   "label": "Get_Log_Req with CFG_DEBUG.FW_LOG_EN = 0",
+   "mode": "APPLICATION",
+   "mode_after": "APPLICATION",
+   "object_id": null,
+   "params": {
+    "FW_LOG_EN": 0
+   },
+   "request": "a200094c",
+   "request_class": "TsL2GetLogRequest",
+   "request_id": 162,
+   "response": "78000590",
+   "status": 120
   }
  ],
  "frame_layouts": {
@@ -2844,6 +2914,8 @@ window.MODEL_SPEC = {
  "walkthroughs": {
   "scenarios": [
    {
+    "group": "Get_Info",
+    "label": "X.509 certificate, block 0",
     "mode": "START_UP",
     "mode_after": "START_UP",
     "note": "",
@@ -3512,6 +3584,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Get_Info",
+    "label": "X.509 certificate, block 29 (last)",
     "mode": "START_UP",
     "mode_after": "START_UP",
     "note": "",
@@ -4180,6 +4254,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Get_Info",
+    "label": "X.509 certificate, block 30 (out of range)",
     "mode": "START_UP",
     "mode_after": "START_UP",
     "note": "",
@@ -4768,6 +4844,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Get_Info",
+    "label": "chip ID",
     "mode": "START_UP",
     "mode_after": "START_UP",
     "note": "",
@@ -5436,6 +5514,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Get_Info",
+    "label": "RISC-V FW version",
     "mode": "START_UP",
     "mode_after": "START_UP",
     "note": "",
@@ -6104,6 +6184,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Get_Info",
+    "label": "SPECT FW version",
     "mode": "START_UP",
     "mode_after": "START_UP",
     "note": "",
@@ -6772,6 +6854,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Get_Info",
+    "label": "FW bank FW1",
     "mode": "START_UP",
     "mode_after": "START_UP",
     "note": "The Start-up table selects a provider the Application table does not have.",
@@ -7472,6 +7556,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Get_Info",
+    "label": "FW bank FW2",
     "mode": "START_UP",
     "mode_after": "START_UP",
     "note": "",
@@ -8076,6 +8162,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Get_Info",
+    "label": "FW bank SPECT1",
     "mode": "START_UP",
     "mode_after": "START_UP",
     "note": "",
@@ -8776,6 +8864,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Get_Info",
+    "label": "FW bank SPECT2",
     "mode": "START_UP",
     "mode_after": "START_UP",
     "note": "",
@@ -9380,6 +9470,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Get_Info",
+    "label": "unknown OBJECT_ID 0x55",
     "mode": "START_UP",
     "mode_after": "START_UP",
     "note": "",
@@ -9936,6 +10028,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Handshake",
+    "label": "pairing key slot 0 (written)",
     "mode": "START_UP",
     "mode_after": "START_UP",
     "note": "Refused before any handler: the gate answers UNKNOWN_REQ.",
@@ -10476,6 +10570,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Handshake",
+    "label": "pairing key slot 3 (blank)",
     "mode": "START_UP",
     "mode_after": "START_UP",
     "note": "",
@@ -11016,6 +11112,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Session",
+    "label": "Encrypted_Cmd_Req with no session",
     "mode": "START_UP",
     "mode_after": "START_UP",
     "note": "",
@@ -11556,6 +11654,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Session",
+    "label": "Encrypted_Session_Abt",
     "mode": "START_UP",
     "mode_after": "START_UP",
     "note": "",
@@ -12096,6 +12196,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Transport",
+    "label": "Resend_Req",
     "mode": "START_UP",
     "mode_after": "START_UP",
     "note": "",
@@ -12652,6 +12754,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Transport",
+    "label": "Get_Log_Req",
     "mode": "START_UP",
     "mode_after": "START_UP",
     "note": "",
@@ -13224,6 +13328,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Sleep",
+    "label": "SLEEP_MODE",
     "mode": "START_UP",
     "mode_after": "START_UP",
     "note": "",
@@ -13764,6 +13870,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Sleep",
+    "label": "invalid kind 0x77",
     "mode": "START_UP",
     "mode_after": "START_UP",
     "note": "",
@@ -14304,6 +14412,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Startup",
+    "label": "REBOOT",
     "mode": "START_UP",
     "mode_after": "APPLICATION",
     "note": "",
@@ -15196,6 +15306,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Startup",
+    "label": "MAINTENANCE_REBOOT",
     "mode": "START_UP",
     "mode_after": "START_UP",
     "note": "",
@@ -16088,6 +16200,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Startup",
+    "label": "invalid id 0x99",
     "mode": "START_UP",
     "mode_after": "START_UP",
     "note": "",
@@ -16836,6 +16950,1364 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Startup",
+    "label": "MAINTENANCE_REBOOT with CFG_START_UP.MAINTENANCE_ENA = 0",
+    "mode": "START_UP",
+    "mode_after": "START_UP",
+    "note": "",
+    "request": "b30103f60f",
+    "request_class": "TsL2StartupRequest",
+    "response": "78000590",
+    "steps": [
+     {
+      "depth": 1,
+      "event": "call",
+      "file": "tvl/host/host.py",
+      "function": "Host._send_l2_request_bytes",
+      "line": 212,
+      "value": null
+     },
+     {
+      "depth": 2,
+      "event": "call",
+      "file": "tvl/host/host.py",
+      "function": "Host._ll_send_l2",
+      "line": 185,
+      "value": null
+     },
+     {
+      "depth": 3,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_drive_csn_low",
+      "line": 317,
+      "value": null
+     },
+     {
+      "depth": 4,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.spi_drive_csn_low",
+      "line": 70,
+      "value": null
+     },
+     {
+      "depth": 4,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.spi_drive_csn_low",
+      "line": 75,
+      "value": "None"
+     },
+     {
+      "depth": 3,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_drive_csn_low",
+      "line": 319,
+      "value": "None"
+     },
+     {
+      "depth": 3,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_send (overload)",
+      "line": 349,
+      "value": null
+     },
+     {
+      "depth": 4,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.process_spi_data",
+      "line": 96,
+      "value": null
+     },
+     {
+      "depth": 5,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "csn_falling_edge_state",
+      "line": 130,
+      "value": null
+     },
+     {
+      "depth": 6,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.process_input",
+      "line": 353,
+      "value": null
+     },
+     {
+      "depth": 7,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel._process_input",
+      "line": 374,
+      "value": null
+     },
+     {
+      "depth": 8,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel._is_request_available",
+      "line": 405,
+      "value": null
+     },
+     {
+      "depth": 8,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel._is_request_available",
+      "line": 415,
+      "value": "True"
+     },
+     {
+      "depth": 8,
+      "event": "call",
+      "file": "tvl/targets/model/tropic01_l2_api_impl.py",
+      "function": "L2APIImplementation.ts_l2_startup",
+      "line": 316,
+      "value": null
+     },
+     {
+      "depth": 9,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel._maintenance_allowed",
+      "line": 476,
+      "value": null
+     },
+     {
+      "depth": 10,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.config",
+      "line": 523,
+      "value": null
+     },
+     {
+      "depth": 10,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.config",
+      "line": 537,
+      "value": "ConfigurationObjectImpl(cfg_start_up=0xfffffff7; cfg_sensors=0xffffffff; cfg_\u2026"
+     },
+     {
+      "depth": 9,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel._maintenance_allowed",
+      "line": 478,
+      "value": "False"
+     },
+     {
+      "depth": 8,
+      "event": "return",
+      "file": "tvl/targets/model/tropic01_l2_api_impl.py",
+      "function": "L2APIImplementation.ts_l2_startup",
+      "line": 330,
+      "value": "TsL2StartupResponse<(status=78, length=AUTO, crc=AUTO)"
+     },
+     {
+      "depth": 7,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel._process_input",
+      "line": 401,
+      "value": "TsL2StartupResponse<(status=78, length=AUTO, crc=AUTO)"
+     },
+     {
+      "depth": 6,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.process_input",
+      "line": 369,
+      "value": "78 00 05 90"
+     },
+     {
+      "depth": 6,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.set_next_state",
+      "line": 103,
+      "value": null
+     },
+     {
+      "depth": 6,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.set_next_state",
+      "line": 104,
+      "value": "None"
+     },
+     {
+      "depth": 6,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.chip_status",
+      "line": 106,
+      "value": null
+     },
+     {
+      "depth": 7,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel._chip_status_flags",
+      "line": 462,
+      "value": null
+     },
+     {
+      "depth": 8,
+      "event": "call",
+      "file": "tvl/targets/model/internal/chip_mode.py",
+      "function": "ChipMode.chip_status_flags",
+      "line": 17,
+      "value": null
+     },
+     {
+      "depth": 8,
+      "event": "return",
+      "file": "tvl/targets/model/internal/chip_mode.py",
+      "function": "ChipMode.chip_status_flags",
+      "line": 21,
+      "value": "L1ChipStatusFlag.START"
+     },
+     {
+      "depth": 7,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel._chip_status_flags",
+      "line": 463,
+      "value": "L1ChipStatusFlag.START"
+     },
+     {
+      "depth": 6,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.chip_status",
+      "line": 118,
+      "value": "05"
+     },
+     {
+      "depth": 6,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.init_byte",
+      "line": 86,
+      "value": null
+     },
+     {
+      "depth": 6,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.init_byte",
+      "line": 88,
+      "value": "00"
+     },
+     {
+      "depth": 6,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "pad",
+      "line": 18,
+      "value": null
+     },
+     {
+      "depth": 6,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "pad",
+      "line": 21,
+      "value": "05 00 00 00 00"
+     },
+     {
+      "depth": 5,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "csn_falling_edge_state",
+      "line": 196,
+      "value": "05 00 00 00 00"
+     },
+     {
+      "depth": 4,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.process_spi_data",
+      "line": 101,
+      "value": "05 00 00 00 00"
+     },
+     {
+      "depth": 3,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_send (overload)",
+      "line": 351,
+      "value": "05 00 00 00 00"
+     },
+     {
+      "depth": 3,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_drive_csn_high",
+      "line": 321,
+      "value": null
+     },
+     {
+      "depth": 4,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.spi_drive_csn_high",
+      "line": 77,
+      "value": null
+     },
+     {
+      "depth": 4,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.spi_drive_csn_high",
+      "line": 84,
+      "value": "None"
+     },
+     {
+      "depth": 3,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_drive_csn_high",
+      "line": 323,
+      "value": "None"
+     },
+     {
+      "depth": 3,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_drive_csn_low",
+      "line": 317,
+      "value": null
+     },
+     {
+      "depth": 4,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.spi_drive_csn_low",
+      "line": 70,
+      "value": null
+     },
+     {
+      "depth": 4,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.spi_drive_csn_low",
+      "line": 75,
+      "value": "None"
+     },
+     {
+      "depth": 3,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_drive_csn_low",
+      "line": 319,
+      "value": "None"
+     },
+     {
+      "depth": 3,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_send (overload)",
+      "line": 349,
+      "value": null
+     },
+     {
+      "depth": 4,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.process_spi_data",
+      "line": 96,
+      "value": null
+     },
+     {
+      "depth": 5,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "csn_falling_edge_state",
+      "line": 130,
+      "value": null
+     },
+     {
+      "depth": 6,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.set_next_state",
+      "line": 103,
+      "value": null
+     },
+     {
+      "depth": 6,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.set_next_state",
+      "line": 104,
+      "value": "None"
+     },
+     {
+      "depth": 6,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.chip_status",
+      "line": 106,
+      "value": null
+     },
+     {
+      "depth": 7,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel._chip_status_flags",
+      "line": 462,
+      "value": null
+     },
+     {
+      "depth": 8,
+      "event": "call",
+      "file": "tvl/targets/model/internal/chip_mode.py",
+      "function": "ChipMode.chip_status_flags",
+      "line": 17,
+      "value": null
+     },
+     {
+      "depth": 8,
+      "event": "return",
+      "file": "tvl/targets/model/internal/chip_mode.py",
+      "function": "ChipMode.chip_status_flags",
+      "line": 21,
+      "value": "L1ChipStatusFlag.START"
+     },
+     {
+      "depth": 7,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel._chip_status_flags",
+      "line": 463,
+      "value": "L1ChipStatusFlag.START"
+     },
+     {
+      "depth": 6,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.chip_status",
+      "line": 118,
+      "value": "05"
+     },
+     {
+      "depth": 6,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.fetch",
+      "line": 120,
+      "value": null
+     },
+     {
+      "depth": 6,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.fetch",
+      "line": 123,
+      "value": "78 00 05 90"
+     },
+     {
+      "depth": 6,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "pad",
+      "line": 18,
+      "value": null
+     },
+     {
+      "depth": 6,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "pad",
+      "line": 21,
+      "value": "05 78 00 05 90"
+     },
+     {
+      "depth": 5,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "csn_falling_edge_state",
+      "line": 154,
+      "value": "05 78 00 05 90"
+     },
+     {
+      "depth": 4,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.process_spi_data",
+      "line": 101,
+      "value": "05 78 00 05 90"
+     },
+     {
+      "depth": 3,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_send (overload)",
+      "line": 351,
+      "value": "05 78 00 05 90"
+     },
+     {
+      "depth": 3,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_drive_csn_high",
+      "line": 321,
+      "value": null
+     },
+     {
+      "depth": 4,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.spi_drive_csn_high",
+      "line": 77,
+      "value": null
+     },
+     {
+      "depth": 4,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.spi_drive_csn_high",
+      "line": 84,
+      "value": "None"
+     },
+     {
+      "depth": 3,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_drive_csn_high",
+      "line": 323,
+      "value": "None"
+     },
+     {
+      "depth": 3,
+      "event": "call",
+      "file": "tvl/host/host.py",
+      "function": "Host._process_response (overload)",
+      "line": 259,
+      "value": null
+     },
+     {
+      "depth": 3,
+      "event": "return",
+      "file": "tvl/host/host.py",
+      "function": "Host._process_response (overload)",
+      "line": 268,
+      "value": "TsL2StartupResponse<(status=78, length=00, crc=9005)"
+     },
+     {
+      "depth": 2,
+      "event": "return",
+      "file": "tvl/host/host.py",
+      "function": "Host._ll_send_l2",
+      "line": 210,
+      "value": "(<tvl.api.l2_api.TsL2StartupResponse object at 0x...>, b'x\\x00\\x05\\x90')"
+     },
+     {
+      "depth": 1,
+      "event": "return",
+      "file": "tvl/host/host.py",
+      "function": "Host._send_l2_request_bytes",
+      "line": 224,
+      "value": "78 00 05 90"
+     },
+     {
+      "depth": 1,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_drive_csn_low",
+      "line": 317,
+      "value": null
+     },
+     {
+      "depth": 2,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.spi_drive_csn_low",
+      "line": 70,
+      "value": null
+     },
+     {
+      "depth": 2,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.spi_drive_csn_low",
+      "line": 75,
+      "value": "None"
+     },
+     {
+      "depth": 1,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_drive_csn_low",
+      "line": 319,
+      "value": "None"
+     },
+     {
+      "depth": 1,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_send (overload)",
+      "line": 349,
+      "value": null
+     },
+     {
+      "depth": 2,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.process_spi_data",
+      "line": 96,
+      "value": null
+     },
+     {
+      "depth": 3,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "csn_falling_edge_state",
+      "line": 130,
+      "value": null
+     },
+     {
+      "depth": 4,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.set_next_state",
+      "line": 103,
+      "value": null
+     },
+     {
+      "depth": 4,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.set_next_state",
+      "line": 104,
+      "value": "None"
+     },
+     {
+      "depth": 4,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.chip_status",
+      "line": 106,
+      "value": null
+     },
+     {
+      "depth": 5,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel._chip_status_flags",
+      "line": 462,
+      "value": null
+     },
+     {
+      "depth": 6,
+      "event": "call",
+      "file": "tvl/targets/model/internal/chip_mode.py",
+      "function": "ChipMode.chip_status_flags",
+      "line": 17,
+      "value": null
+     },
+     {
+      "depth": 6,
+      "event": "return",
+      "file": "tvl/targets/model/internal/chip_mode.py",
+      "function": "ChipMode.chip_status_flags",
+      "line": 21,
+      "value": "L1ChipStatusFlag.START"
+     },
+     {
+      "depth": 5,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel._chip_status_flags",
+      "line": 463,
+      "value": "L1ChipStatusFlag.START"
+     },
+     {
+      "depth": 4,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.chip_status",
+      "line": 118,
+      "value": "05"
+     },
+     {
+      "depth": 4,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "pad",
+      "line": 18,
+      "value": null
+     },
+     {
+      "depth": 4,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "pad",
+      "line": 21,
+      "value": "05"
+     },
+     {
+      "depth": 3,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "csn_falling_edge_state",
+      "line": 172,
+      "value": "05"
+     },
+     {
+      "depth": 2,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.process_spi_data",
+      "line": 101,
+      "value": "05"
+     },
+     {
+      "depth": 1,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_send (overload)",
+      "line": 351,
+      "value": "05"
+     },
+     {
+      "depth": 1,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_drive_csn_high",
+      "line": 321,
+      "value": null
+     },
+     {
+      "depth": 2,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.spi_drive_csn_high",
+      "line": 77,
+      "value": null
+     },
+     {
+      "depth": 2,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.spi_drive_csn_high",
+      "line": 84,
+      "value": "None"
+     },
+     {
+      "depth": 1,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_drive_csn_high",
+      "line": 323,
+      "value": "None"
+     },
+     {
+      "depth": 1,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.chip_mode",
+      "line": 457,
+      "value": null
+     },
+     {
+      "depth": 1,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.chip_mode",
+      "line": 460,
+      "value": "ChipMode.START_UP"
+     }
+    ],
+    "title": "Startup \u00b7 MAINTENANCE_REBOOT with CFG_START_UP.MAINTENANCE_ENA = 0",
+    "truncated": false
+   },
+   {
+    "group": "Transport",
+    "label": "Get_Log_Req with CFG_DEBUG.FW_LOG_EN = 0",
+    "mode": "START_UP",
+    "mode_after": "START_UP",
+    "note": "",
+    "request": "a200094c",
+    "request_class": "TsL2GetLogRequest",
+    "response": "78000590",
+    "steps": [
+     {
+      "depth": 1,
+      "event": "call",
+      "file": "tvl/host/host.py",
+      "function": "Host._send_l2_request_bytes",
+      "line": 212,
+      "value": null
+     },
+     {
+      "depth": 2,
+      "event": "call",
+      "file": "tvl/host/host.py",
+      "function": "Host._ll_send_l2",
+      "line": 185,
+      "value": null
+     },
+     {
+      "depth": 3,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_drive_csn_low",
+      "line": 317,
+      "value": null
+     },
+     {
+      "depth": 4,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.spi_drive_csn_low",
+      "line": 70,
+      "value": null
+     },
+     {
+      "depth": 4,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.spi_drive_csn_low",
+      "line": 75,
+      "value": "None"
+     },
+     {
+      "depth": 3,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_drive_csn_low",
+      "line": 319,
+      "value": "None"
+     },
+     {
+      "depth": 3,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_send (overload)",
+      "line": 349,
+      "value": null
+     },
+     {
+      "depth": 4,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.process_spi_data",
+      "line": 96,
+      "value": null
+     },
+     {
+      "depth": 5,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "csn_falling_edge_state",
+      "line": 130,
+      "value": null
+     },
+     {
+      "depth": 6,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.process_input",
+      "line": 353,
+      "value": null
+     },
+     {
+      "depth": 7,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel._process_input",
+      "line": 374,
+      "value": null
+     },
+     {
+      "depth": 8,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel._is_request_available",
+      "line": 405,
+      "value": null
+     },
+     {
+      "depth": 8,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel._is_request_available",
+      "line": 415,
+      "value": "True"
+     },
+     {
+      "depth": 8,
+      "event": "call",
+      "file": "tvl/targets/model/tropic01_l2_api_impl.py",
+      "function": "L2APIImplementation.ts_l2_get_log",
+      "line": 336,
+      "value": null
+     },
+     {
+      "depth": 9,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.config",
+      "line": 523,
+      "value": null
+     },
+     {
+      "depth": 9,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.config",
+      "line": 537,
+      "value": "ConfigurationObjectImpl(cfg_start_up=0xffffffff; cfg_sensors=0xffffffff; cfg_\u2026"
+     },
+     {
+      "depth": 8,
+      "event": "return",
+      "file": "tvl/targets/model/tropic01_l2_api_impl.py",
+      "function": "L2APIImplementation.ts_l2_get_log",
+      "line": 339,
+      "value": "TsL2GetLogResponse<(status=78, length=AUTO, log_msg=[], crc=AUTO)"
+     },
+     {
+      "depth": 7,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel._process_input",
+      "line": 401,
+      "value": "TsL2GetLogResponse<(status=78, length=AUTO, log_msg=[], crc=AUTO)"
+     },
+     {
+      "depth": 6,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.process_input",
+      "line": 369,
+      "value": "78 00 05 90"
+     },
+     {
+      "depth": 6,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.set_next_state",
+      "line": 103,
+      "value": null
+     },
+     {
+      "depth": 6,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.set_next_state",
+      "line": 104,
+      "value": "None"
+     },
+     {
+      "depth": 6,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.chip_status",
+      "line": 106,
+      "value": null
+     },
+     {
+      "depth": 7,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel._chip_status_flags",
+      "line": 462,
+      "value": null
+     },
+     {
+      "depth": 8,
+      "event": "call",
+      "file": "tvl/targets/model/internal/chip_mode.py",
+      "function": "ChipMode.chip_status_flags",
+      "line": 17,
+      "value": null
+     },
+     {
+      "depth": 8,
+      "event": "return",
+      "file": "tvl/targets/model/internal/chip_mode.py",
+      "function": "ChipMode.chip_status_flags",
+      "line": 21,
+      "value": "L1ChipStatusFlag.START"
+     },
+     {
+      "depth": 7,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel._chip_status_flags",
+      "line": 463,
+      "value": "L1ChipStatusFlag.START"
+     },
+     {
+      "depth": 6,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.chip_status",
+      "line": 118,
+      "value": "05"
+     },
+     {
+      "depth": 6,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.init_byte",
+      "line": 86,
+      "value": null
+     },
+     {
+      "depth": 6,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.init_byte",
+      "line": 88,
+      "value": "00"
+     },
+     {
+      "depth": 6,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "pad",
+      "line": 18,
+      "value": null
+     },
+     {
+      "depth": 6,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "pad",
+      "line": 21,
+      "value": "05 00 00 00"
+     },
+     {
+      "depth": 5,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "csn_falling_edge_state",
+      "line": 196,
+      "value": "05 00 00 00"
+     },
+     {
+      "depth": 4,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.process_spi_data",
+      "line": 101,
+      "value": "05 00 00 00"
+     },
+     {
+      "depth": 3,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_send (overload)",
+      "line": 351,
+      "value": "05 00 00 00"
+     },
+     {
+      "depth": 3,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_drive_csn_high",
+      "line": 321,
+      "value": null
+     },
+     {
+      "depth": 4,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.spi_drive_csn_high",
+      "line": 77,
+      "value": null
+     },
+     {
+      "depth": 4,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.spi_drive_csn_high",
+      "line": 84,
+      "value": "None"
+     },
+     {
+      "depth": 3,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_drive_csn_high",
+      "line": 323,
+      "value": "None"
+     },
+     {
+      "depth": 3,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_drive_csn_low",
+      "line": 317,
+      "value": null
+     },
+     {
+      "depth": 4,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.spi_drive_csn_low",
+      "line": 70,
+      "value": null
+     },
+     {
+      "depth": 4,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.spi_drive_csn_low",
+      "line": 75,
+      "value": "None"
+     },
+     {
+      "depth": 3,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_drive_csn_low",
+      "line": 319,
+      "value": "None"
+     },
+     {
+      "depth": 3,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_send (overload)",
+      "line": 349,
+      "value": null
+     },
+     {
+      "depth": 4,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.process_spi_data",
+      "line": 96,
+      "value": null
+     },
+     {
+      "depth": 5,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "csn_falling_edge_state",
+      "line": 130,
+      "value": null
+     },
+     {
+      "depth": 6,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.set_next_state",
+      "line": 103,
+      "value": null
+     },
+     {
+      "depth": 6,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.set_next_state",
+      "line": 104,
+      "value": "None"
+     },
+     {
+      "depth": 6,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.chip_status",
+      "line": 106,
+      "value": null
+     },
+     {
+      "depth": 7,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel._chip_status_flags",
+      "line": 462,
+      "value": null
+     },
+     {
+      "depth": 8,
+      "event": "call",
+      "file": "tvl/targets/model/internal/chip_mode.py",
+      "function": "ChipMode.chip_status_flags",
+      "line": 17,
+      "value": null
+     },
+     {
+      "depth": 8,
+      "event": "return",
+      "file": "tvl/targets/model/internal/chip_mode.py",
+      "function": "ChipMode.chip_status_flags",
+      "line": 21,
+      "value": "L1ChipStatusFlag.START"
+     },
+     {
+      "depth": 7,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel._chip_status_flags",
+      "line": 463,
+      "value": "L1ChipStatusFlag.START"
+     },
+     {
+      "depth": 6,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.chip_status",
+      "line": 118,
+      "value": "05"
+     },
+     {
+      "depth": 6,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.fetch",
+      "line": 120,
+      "value": null
+     },
+     {
+      "depth": 6,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.fetch",
+      "line": 123,
+      "value": "78 00 05 90"
+     },
+     {
+      "depth": 6,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "pad",
+      "line": 18,
+      "value": null
+     },
+     {
+      "depth": 6,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "pad",
+      "line": 21,
+      "value": "05 78 00 05 90"
+     },
+     {
+      "depth": 5,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "csn_falling_edge_state",
+      "line": 154,
+      "value": "05 78 00 05 90"
+     },
+     {
+      "depth": 4,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.process_spi_data",
+      "line": 101,
+      "value": "05 78 00 05 90"
+     },
+     {
+      "depth": 3,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_send (overload)",
+      "line": 351,
+      "value": "05 78 00 05 90"
+     },
+     {
+      "depth": 3,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_drive_csn_high",
+      "line": 321,
+      "value": null
+     },
+     {
+      "depth": 4,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.spi_drive_csn_high",
+      "line": 77,
+      "value": null
+     },
+     {
+      "depth": 4,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.spi_drive_csn_high",
+      "line": 84,
+      "value": "None"
+     },
+     {
+      "depth": 3,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_drive_csn_high",
+      "line": 323,
+      "value": "None"
+     },
+     {
+      "depth": 3,
+      "event": "call",
+      "file": "tvl/host/host.py",
+      "function": "Host._process_response",
+      "line": 233,
+      "value": null
+     },
+     {
+      "depth": 3,
+      "event": "return",
+      "file": "tvl/host/host.py",
+      "function": "Host._process_response",
+      "line": 235,
+      "value": "TsL2GetLogResponse<(status=78, length=00, log_msg=[], crc=9005)"
+     },
+     {
+      "depth": 2,
+      "event": "return",
+      "file": "tvl/host/host.py",
+      "function": "Host._ll_send_l2",
+      "line": 210,
+      "value": "(<tvl.api.l2_api.TsL2GetLogResponse object at 0x...>, b'x\\x00\\x05\\x90')"
+     },
+     {
+      "depth": 1,
+      "event": "return",
+      "file": "tvl/host/host.py",
+      "function": "Host._send_l2_request_bytes",
+      "line": 224,
+      "value": "78 00 05 90"
+     },
+     {
+      "depth": 1,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.chip_mode",
+      "line": 457,
+      "value": null
+     },
+     {
+      "depth": 1,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.chip_mode",
+      "line": 460,
+      "value": "ChipMode.START_UP"
+     }
+    ],
+    "title": "Transport \u00b7 Get_Log_Req with CFG_DEBUG.FW_LOG_EN = 0",
+    "truncated": false
+   },
+   {
+    "group": "Get_Info",
+    "label": "X.509 certificate, block 0",
     "mode": "APPLICATION",
     "mode_after": "APPLICATION",
     "note": "",
@@ -17504,6 +18976,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Get_Info",
+    "label": "X.509 certificate, block 29 (last)",
     "mode": "APPLICATION",
     "mode_after": "APPLICATION",
     "note": "",
@@ -18172,6 +19646,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Get_Info",
+    "label": "X.509 certificate, block 30 (out of range)",
     "mode": "APPLICATION",
     "mode_after": "APPLICATION",
     "note": "",
@@ -18760,6 +20236,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Get_Info",
+    "label": "chip ID",
     "mode": "APPLICATION",
     "mode_after": "APPLICATION",
     "note": "The plain path: SPI FSM, frame check, the gate, the handler, one provider.",
@@ -19428,6 +20906,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Get_Info",
+    "label": "RISC-V FW version",
     "mode": "APPLICATION",
     "mode_after": "APPLICATION",
     "note": "",
@@ -20096,6 +21576,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Get_Info",
+    "label": "SPECT FW version",
     "mode": "APPLICATION",
     "mode_after": "APPLICATION",
     "note": "",
@@ -20764,6 +22246,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Get_Info",
+    "label": "FW bank FW1",
     "mode": "APPLICATION",
     "mode_after": "APPLICATION",
     "note": "",
@@ -21336,6 +22820,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Get_Info",
+    "label": "FW bank FW2",
     "mode": "APPLICATION",
     "mode_after": "APPLICATION",
     "note": "",
@@ -21908,6 +23394,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Get_Info",
+    "label": "FW bank SPECT1",
     "mode": "APPLICATION",
     "mode_after": "APPLICATION",
     "note": "",
@@ -22480,6 +23968,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Get_Info",
+    "label": "FW bank SPECT2",
     "mode": "APPLICATION",
     "mode_after": "APPLICATION",
     "note": "",
@@ -23052,6 +24542,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Get_Info",
+    "label": "unknown OBJECT_ID 0x55",
     "mode": "APPLICATION",
     "mode_after": "APPLICATION",
     "note": "",
@@ -23608,6 +25100,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Handshake",
+    "label": "pairing key slot 0 (written)",
     "mode": "APPLICATION",
     "mode_after": "APPLICATION",
     "note": "",
@@ -24244,6 +25738,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Handshake",
+    "label": "pairing key slot 3 (blank)",
     "mode": "APPLICATION",
     "mode_after": "APPLICATION",
     "note": "",
@@ -24800,6 +26296,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Session",
+    "label": "Encrypted_Cmd_Req with no session",
     "mode": "APPLICATION",
     "mode_after": "APPLICATION",
     "note": "",
@@ -25356,6 +26854,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Session",
+    "label": "Encrypted_Session_Abt",
     "mode": "APPLICATION",
     "mode_after": "APPLICATION",
     "note": "",
@@ -25928,6 +27428,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Transport",
+    "label": "Resend_Req",
     "mode": "APPLICATION",
     "mode_after": "APPLICATION",
     "note": "",
@@ -26484,6 +27986,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Transport",
+    "label": "Get_Log_Req",
     "mode": "APPLICATION",
     "mode_after": "APPLICATION",
     "note": "",
@@ -27056,6 +28560,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Sleep",
+    "label": "SLEEP_MODE",
     "mode": "APPLICATION",
     "mode_after": "APPLICATION",
     "note": "",
@@ -27644,6 +29150,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Sleep",
+    "label": "invalid kind 0x77",
     "mode": "APPLICATION",
     "mode_after": "APPLICATION",
     "note": "",
@@ -28200,6 +29708,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Startup",
+    "label": "REBOOT",
     "mode": "APPLICATION",
     "mode_after": "APPLICATION",
     "note": "",
@@ -29092,6 +30602,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Startup",
+    "label": "MAINTENANCE_REBOOT",
     "mode": "APPLICATION",
     "mode_after": "START_UP",
     "note": "The handler answers and schedules; the boot itself runs on the next transaction.",
@@ -29984,6 +31496,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Startup",
+    "label": "invalid id 0x99",
     "mode": "APPLICATION",
     "mode_after": "APPLICATION",
     "note": "",
@@ -30732,6 +32246,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Startup",
+    "label": "MAINTENANCE_REBOOT with CFG_START_UP.MAINTENANCE_ENA = 0",
     "mode": "APPLICATION",
     "mode_after": "APPLICATION",
     "note": "Refused from the handler, as the firmware does; nothing is scheduled.",
@@ -31303,6 +32819,198 @@ window.MODEL_SPEC = {
       "depth": 1,
       "event": "call",
       "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_drive_csn_low",
+      "line": 317,
+      "value": null
+     },
+     {
+      "depth": 2,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.spi_drive_csn_low",
+      "line": 70,
+      "value": null
+     },
+     {
+      "depth": 2,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.spi_drive_csn_low",
+      "line": 75,
+      "value": "None"
+     },
+     {
+      "depth": 1,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_drive_csn_low",
+      "line": 319,
+      "value": "None"
+     },
+     {
+      "depth": 1,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_send (overload)",
+      "line": 349,
+      "value": null
+     },
+     {
+      "depth": 2,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.process_spi_data",
+      "line": 96,
+      "value": null
+     },
+     {
+      "depth": 3,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "csn_falling_edge_state",
+      "line": 130,
+      "value": null
+     },
+     {
+      "depth": 4,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.set_next_state",
+      "line": 103,
+      "value": null
+     },
+     {
+      "depth": 4,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.set_next_state",
+      "line": 104,
+      "value": "None"
+     },
+     {
+      "depth": 4,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.chip_status",
+      "line": 106,
+      "value": null
+     },
+     {
+      "depth": 5,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel._chip_status_flags",
+      "line": 462,
+      "value": null
+     },
+     {
+      "depth": 6,
+      "event": "call",
+      "file": "tvl/targets/model/internal/chip_mode.py",
+      "function": "ChipMode.chip_status_flags",
+      "line": 17,
+      "value": null
+     },
+     {
+      "depth": 6,
+      "event": "return",
+      "file": "tvl/targets/model/internal/chip_mode.py",
+      "function": "ChipMode.chip_status_flags",
+      "line": 22,
+      "value": "L1ChipStatusFlag.None"
+     },
+     {
+      "depth": 5,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel._chip_status_flags",
+      "line": 463,
+      "value": "L1ChipStatusFlag.None"
+     },
+     {
+      "depth": 4,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.chip_status",
+      "line": 118,
+      "value": "01"
+     },
+     {
+      "depth": 4,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "pad",
+      "line": 18,
+      "value": null
+     },
+     {
+      "depth": 4,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "pad",
+      "line": 21,
+      "value": "01"
+     },
+     {
+      "depth": 3,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "csn_falling_edge_state",
+      "line": 172,
+      "value": "01"
+     },
+     {
+      "depth": 2,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.process_spi_data",
+      "line": 101,
+      "value": "01"
+     },
+     {
+      "depth": 1,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_send (overload)",
+      "line": 351,
+      "value": "01"
+     },
+     {
+      "depth": 1,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_drive_csn_high",
+      "line": 321,
+      "value": null
+     },
+     {
+      "depth": 2,
+      "event": "call",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.spi_drive_csn_high",
+      "line": 77,
+      "value": null
+     },
+     {
+      "depth": 2,
+      "event": "return",
+      "file": "tvl/targets/model/internal/spi_fsm.py",
+      "function": "SpiFsm.spi_drive_csn_high",
+      "line": 84,
+      "value": "None"
+     },
+     {
+      "depth": 1,
+      "event": "return",
+      "file": "tvl/targets/model/base_model.py",
+      "function": "BaseModel.spi_drive_csn_high",
+      "line": 323,
+      "value": "None"
+     },
+     {
+      "depth": 1,
+      "event": "call",
+      "file": "tvl/targets/model/base_model.py",
       "function": "BaseModel.chip_mode",
       "line": 457,
       "value": null
@@ -31320,6 +33028,8 @@ window.MODEL_SPEC = {
     "truncated": false
    },
    {
+    "group": "Transport",
+    "label": "Get_Log_Req with CFG_DEBUG.FW_LOG_EN = 0",
     "mode": "APPLICATION",
     "mode_after": "APPLICATION",
     "note": "A Configuration Object gate: RESP_DISABLED with no payload.",

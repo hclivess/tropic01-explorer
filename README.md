@@ -54,7 +54,7 @@ untouched.
 
 The **Try it** tab is the same idea taken as far as it goes: every request worth
 sending, sent in every mode, each against a *fresh* chip so nothing leaks
-between them. 44 exchanges. Picking one shows what the model actually answered
+between them. 48 exchanges. Picking one shows what the model actually answered
 and what the *other* firmware answers to the identical bytes — which is the
 quickest way to see the shape of the change:
 
@@ -68,14 +68,14 @@ quickest way to see the shape of the change:
 None of that table is typed here by a person either; it is what the capture
 came back with.
 
-The **Walkthrough** tab is a break-mode view of the same runs: every Try-it
-exchange — all 22 requests in both modes, a `Startup_Req` followed by the read
-that lands the restart — plus the two CO-gated refusals the all-ones config
-cannot reach, recorded with `sys.settrace` while the request went through the
-model. Step through the calls one at a time; the source of the function at the
-cursor lights up at the executing line. Only the model's own files are traced —
-the pydantic and protocol plumbing is filtered out, or the reboot scenario would
-be four hundred steps of register reads.
+Below the bytes, **How the code got there** is the same exchange traced: every
+request in the list — 24 in both modes, a `Startup_Req` followed by the read
+that lands the restart, the two CO-gated refusals with the R-config that clears
+their bit — was recorded with `sys.settrace` while it went through the model.
+Pick a request above and step through its calls; the source of the function at
+the cursor lights up at the executing line. Only the model's own files are
+traced — the pydantic and protocol plumbing is filtered out, or the reboot
+scenario would be four hundred steps of register reads.
 
 **3. Enforcement.** The generator's `--check` mode regenerates in memory and
 fails if `docs/model_spec.js` differs. That gate runs **before every push**:
@@ -124,8 +124,8 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py
 ```
 
 The page probes for that API at load. If it answers, a **LIVE** badge appears and
-the Try-it tab grows three buttons: *send this request for real*, *power on* and
-*power off*. Sending puts the bytes through a model that is running now, and
+the Try-it tab grows two buttons: *send this request for real* and a power
+toggle. Sending puts the bytes through a model that is running now, and
 compares the answer with the captured one — agreement means the capture still
 describes the model.
 
