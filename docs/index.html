@@ -1239,6 +1239,29 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
     return out;
   }
   renderTry();
+
+  // Deep links: #try:<MODE>:<request key> opens Try it on that exchange, in
+  // that mode - so a note can point at "the handshake in Start-up" instead of
+  // describing three clicks. The key is the picker's value, URL-encoded.
+  function applyDeepLink() {
+    const m = decodeURIComponent(location.hash.slice(1)).match(/^try:([A-Z_]+):(.+)$/);
+    if (!m) return false;
+    const [, mode, key] = m;
+    if (!X.some((e) => keyOf(e) === key)) return false;
+    if (S.chip_modes.some((c) => c.name === mode) && mode !== st.mode) {
+      st.mode = mode; st.status = null; st.chip = null; st.stranded = false; st.request = null; st.response = null;
+      logLines.unshift("<b>mode set by link</b> · now <b>" + mode + "</b> · no reboot was performed");
+    }
+    tryState.key = key;
+    renderBoot(); renderTry();
+    const tab = [...nav.children][TABS.findIndex(([id]) => id === "try")];
+    TABS.forEach(([id2]) => { $("tab-" + id2).hidden = true; });
+    [...nav.children].forEach((c) => c.setAttribute("aria-selected", "false"));
+    $("tab-try").hidden = false; tab.setAttribute("aria-selected", "true");
+    return true;
+  }
+  applyDeepLink();
+  window.addEventListener("hashchange", applyDeepLink);
   probeLive();
 
   const wireBox = $("wire");

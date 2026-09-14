@@ -459,6 +459,19 @@ async function run() {
   check("hidden elements do not paint",
     dom.window.getComputedStyle(d.getElementById("live-badge")).display, "none");
   check("how-it-works is a collapsible under the header", !!d.querySelector("header details#about-box #about"), true);
+  // a deep link must land on the request and mode it names
+  {
+    const l3 = spec.l3_exchanges[0]; const key = l3.group + " · " + l3.label;
+    dom.window.location.hash = "try:START_UP:" + encodeURIComponent(key);
+    dom.window.dispatchEvent(new dom.window.Event("hashchange"));
+    check("deep link opens Try it", d.getElementById("tab-try").hidden, false);
+    check("deep link selects the request", d.getElementById("try-pick").value, key);
+    check("deep link sets the mode",
+      [...d.querySelectorAll("#try-mode button")].find((b) => b.getAttribute("aria-pressed") === "true").textContent, "START_UP");
+    check("deep link to an L3 command in Start-up shows why it is unreachable",
+      d.querySelector("#try-main").textContent.includes("UNKNOWN_REQ"), true);
+  }
+
   check("errors after interaction", errors.length, 0);
 
   console.log();
