@@ -164,7 +164,7 @@ async function run() {
       d.getElementById("r-mode").textContent, expected.to);
     // and shows the frames that did it, decoded the way Try-it decodes them
     const bb = d.getElementById("boot-bytes");
-    check("boot panel shows request and response frames", bb.querySelectorAll(".frame").length, 2);
+    check("boot panel shows request and response frames", bb.querySelectorAll(".frame:not(.named)").length, 2);
     check("boot panel request frame carries the captured REQ_ID",
       bb.textContent.includes(hex(parseInt(expected.request.slice(0, 2), 16))), true);
     check("boot panel response frame carries the captured STATUS",
@@ -444,6 +444,17 @@ async function run() {
     check("Start-up capture shows START", spec.chip_status_states.start_up.transactions[0].chip_status & 4, 4);
     check("ALARM marked as never set", [...d.querySelectorAll("#t-chipstatus tbody tr")].some((tr) => tr.textContent.includes("ALARM") && tr.textContent.includes("never set")), true);
   }
+  // request DATA is split into its named fields, read off l2_api.py
+  atLeast("L2 field specs", Object.keys(spec.l2_fields || {}).length, 12);
+  check("Get_Info request fields known", (spec.l2_fields.TsL2GetInfoRequest || []).map((f) => f.name).join(","), "object_id,block_index");
+  check("OBJECT_ID carries its enum names", !!(spec.l2_fields.TsL2GetInfoRequest[0].enum || {})[176], true);
+  {
+    const gi = spec.exchanges.find((e) => e.mode === "APPLICATION" && e.request_class === "TsL2GetInfoRequest");
+    const pick = d.getElementById("try-pick"); pick.value = gi.group + " · " + gi.label; pick.dispatchEvent(new dom.window.Event("change"));
+    const subs = [...d.querySelectorAll("#try-main .fld.sub")].map((x) => x.textContent);
+    check("Get_Info pane names OBJECT_ID and BLOCK_INDEX", subs.some((t) => t.includes("OBJECT_ID")) && subs.some((t) => t.includes("BLOCK_INDEX")), true);
+  }
+  check("all-exchanges table lists every exchange", n("#t-all tbody tr"), spec.exchanges.length + spec.l3_exchanges.length);
   check("six tabs", n("#tabs button"), 6);
   check("L3 table rows", n("#t-l3 tbody tr"), spec.l3_api.length);
   check("memory partition rows", n("#t-mem tbody tr"), spec.memory.partitions.length);

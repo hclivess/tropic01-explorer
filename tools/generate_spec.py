@@ -49,6 +49,7 @@ from tvl.api.l2_api import (
     TsL2SleepRequest,
     TsL2StartupRequest,
 )
+from tvl.api import l2_api as l2_api_mod
 from tvl.api import l3_api as l3_mod
 from tvl.api.l3_api import L3Enum
 from tvl.constants import (
@@ -1729,6 +1730,29 @@ def _field_specs(cls: type) -> List[Dict[str, Any]]:
     return out
 
 
+def l2_fields() -> Dict[str, Any]:
+    """The DATA fields of every L2 request and response class - name, type,
+    size, doc, and the enum names a field's values map to - read off
+    `l2_api.py`, so the page can split a frame's DATA into named fields."""
+    from tvl.messages.l2_messages import L2Request, L2Response
+    out: Dict[str, Any] = {}
+    for name, cls in vars(l2_api_mod).items():
+        if not (inspect.isclass(cls) and issubclass(cls, (L2Request, L2Response)) and hasattr(cls, "ID")):
+            continue
+        fields = [f for f in _field_specs(cls) if f["name"] not in ("id", "length", "crc")]
+        # A nested FooBarEnum documents the field foo_bar.
+        enums = {}
+        for ename, enum in vars(cls).items():
+            if inspect.isclass(enum) and ename.endswith("Enum"):
+                field = re.sub(r"(?<!^)(?=[A-Z])", "_", ename[:-4]).lower()
+                enums[field] = {int(m.value): m.name for m in enum}
+        for f in fields:
+            if f["name"] in enums:
+                f["enum"] = enums[f["name"]]
+        out[name] = fields
+    return out
+
+
 def l3_api() -> List[Dict[str, Any]]:
     """The 23 L3 commands: id, fields in and out, result codes, the handler,
     and the Configuration Object register that gates each - all read off the
@@ -1917,6 +1941,7 @@ def _build() -> Dict[str, Any]:
         "wire_traces": wire_traces(),
         "exchanges": exchanges(),
         "l3_api": l3_api(),
+        "l2_fields": l2_fields(),
         "l3_exchanges": l3_exchanges(),
         "memory": memory_map(),
         "examples": repo_examples(

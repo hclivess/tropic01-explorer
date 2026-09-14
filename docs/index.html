@@ -113,6 +113,7 @@ td.doc { color: var(--dim); font-size: 12px; }
 .fld .n { color: var(--faint); font-size: 9.5px; text-transform: uppercase; letter-spacing: .07em; display: block; }
 .fld.status { border-color: var(--accent); }
 .fld.data { border-color: var(--wire); }
+.fld.sub { border-style: dashed; color: var(--dim); }
 .dir { color: var(--faint); width: 1.4em; display: inline-block; }
 .ascii { color: var(--accent); }
 
@@ -345,6 +346,10 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
       </div>
     </div>
   </div>
+  <details class="panel" id="try-all">
+    <summary class="sub">Every exchange at a glance — pick one to open it</summary>
+    <div class="scroll" id="t-all"></div>
+  </details>
   <details class="panel" id="live-hint" hidden>
     <summary class="sub">These are captured bytes. To send them to a model running right now, start the bridge…</summary>
     <div class="sub" style="margin-top:8px">
@@ -701,7 +706,7 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
     const bb = $("boot-bytes"); bb.innerHTML = "";
     if (st.request) {
       bb.append(el("div", { className: "sub", textContent: "the last Startup_Req, as it crossed the wire" }));
-      renderFrames(bb, st.request, st.response);
+      renderFrames(bb, st.request, st.response, "TsL2StartupRequest");
       bb.append(el("div", { className: "sub", textContent:
         "then one GET_RESP read → CHIP_STATUS " + hex(st.chip) +
         " — the restart lands on that read, not on the response" }));
@@ -885,9 +890,28 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
 
   // One request frame and one response frame, decoded field by field. Used by
   // the Try-it pane and the boot panel, so both show bytes the same way.
-  function renderFrames(node, request, response) {
-    [["→ request", request, ["REQ_ID", "REQ_LEN"]],
-     ["← response", response, ["STATUS", "RSP_LEN"]]].forEach(([lbl, raw, layout]) => {
+  // DATA split into the request's or response's own fields, sizes read off
+  // l2_api.py: scalars by width, arrays by declared size, the last array takes
+  // the rest. Enum-valued fields show the member name beside the byte.
+  function namedFields(data, specs) {
+    if (!specs || !specs.length || !data.length) return [];
+    const out = []; let i = 0;
+    specs.forEach((f, k) => {
+      let size = f.size;
+      if (size == null) size = (k === specs.length - 1) ? data.length - i : (f.params.max_size || data.length - i);
+      const slice = data.slice(i, i + size); i += size;
+      if (!slice.length) return;
+      const hexs = slice.map((x) => x.toString(16).padStart(2, "0")).join(" ");
+      let v = hexs.length > 60 ? hexs.slice(0, 60) + " …" : hexs;
+      if (f.enum && slice.length === 1 && f.enum[slice[0]]) v += "  " + f.enum[slice[0]];
+      out.push({ n: f.name.toUpperCase(), v });
+    });
+    return out;
+  }
+  function renderFrames(node, request, response, requestClass) {
+    const specs = S.l2_fields || {};
+    [["→ request", request, ["REQ_ID", "REQ_LEN"], specs[requestClass]],
+     ["← response", response, ["STATUS", "RSP_LEN"], specs[(requestClass || "").replace("Request", "Response")]]].forEach(([lbl, raw, layout, fieldSpecs]) => {
       const dec = decode(raw, layout);
       node.append(el("div", { className: "sub", textContent: lbl }));
       const row = el("div", { className: "frame" });
@@ -899,6 +923,17 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
         row.append(n);
       });
       node.append(row);
+      const named = namedFields(dec.data || [], fieldSpecs);
+      if (named.length) {
+        const sub = el("div", { className: "frame named" });
+        named.forEach((f) => {
+          const n = el("span", { className: "fld sub" });
+          n.append(el("span", { className: "n", textContent: "DATA · " + f.n }));
+          n.append(document.createTextNode(f.v));
+          sub.append(n);
+        });
+        node.append(sub);
+      }
       const asc = printable(dec.data || []);
       if (asc) node.append(el("div", { className: "sub" }, [
         document.createTextNode("ascii: "),
@@ -933,7 +968,7 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
         Object.entries(e.params).map(([k, v]) => k + "=" + v).join("  ") }));
     }
 
-    renderFrames(node, e.request, e.response);
+    renderFrames(node, e.request, e.response, e.request_class);
 
     // What the DATA field actually means. Worked out in Python from the model's
     // own definitions and shipped in the spec; the page only renders it.
@@ -1042,7 +1077,7 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
     if (e.note) node.append(el("div", { className: "decoded" }, [el("span", { className: "doc", textContent: e.note })]));
     (e.l2_frames || []).forEach((f, i) => {
       node.append(el("div", { className: "sub", textContent: "carried as L2 Encrypted_Cmd" + (e.l2_frames.length > 1 ? " chunk " + (i + 1) : "") + " — ciphertext, not the bytes above" }));
-      renderFrames(node, f.request, f.responses[f.responses.length - 1] || "");
+      renderFrames(node, f.request, f.responses[f.responses.length - 1] || "", "TsL2EncryptedCmdRequest");
     });
     renderTransactions(node, e.transactions);
     node.append(el("div", { className: "sub", textContent: "CHIP_STATUS after: " + hex(e.chip_status_after) + (e.own_chip ? "   ·   on its own chip, with the R-config that forbids it" : "   ·   on the shared chip, in sequence") }));
@@ -1278,6 +1313,17 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
     return out;
   }
   renderTry();
+
+  // The whole capture in one table; a row opens the pane above it.
+  put("t-all", table(["layer", "request", "mode", "answer", "len", "mode after"],
+    X.map((e) => [
+      tag(e.layer === "L3" ? "hot" : "app", e.layer === "L3" ? "L3" : "L2"),
+      tryLink(keyOf(e), (x) => keyOf(x) === keyOf(e) && x.mode === e.mode, e.mode),
+      e.mode,
+      e.layer === "L3" ? hex(e.result_code) + " " + (e.result_name || "?") : hex(e.status) + " " + (statusName[e.status] || "?"),
+      e.layer === "L3" ? String((e.result || "").length / 2) : String(parseInt(e.response.slice(2, 4), 16)),
+      e.mode_after || e.mode,
+    ])));
 
   // Deep links: #try:<MODE>:<request key> opens Try it on that exchange, in
   // that mode - so a note can point at "the handshake in Start-up" instead of

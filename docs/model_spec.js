@@ -3518,6 +3518,155 @@ window.MODEL_SPEC = {
    }
   ]
  },
+ "l2_fields": {
+  "TsL2EncryptedCmdRequest": [
+   {
+    "doc": "The encrypted L3 command or a chunk of it.",
+    "name": "l3_chunk",
+    "params": {
+     "max_size": 252,
+     "min_size": 1
+    },
+    "size": null,
+    "type": "U8Array"
+   }
+  ],
+  "TsL2EncryptedCmdResponse": [
+   {
+    "doc": "The encrypted L3 result or a chunk of it.",
+    "name": "l3_chunk",
+    "params": {
+     "max_size": 252,
+     "min_size": 1
+    },
+    "size": null,
+    "type": "U8Array"
+   }
+  ],
+  "TsL2EncryptedSessionAbtRequest": [],
+  "TsL2EncryptedSessionAbtResponse": [],
+  "TsL2GetInfoRequest": [
+   {
+    "doc": "The Identifier of the requested object.",
+    "enum": {
+     "0": "X509_CERTIFICATE",
+     "1": "CHIP_ID",
+     "2": "RISCV_FW_VERSION",
+     "4": "SPECT_FW_VERSION",
+     "176": "FW_BANK"
+    },
+    "name": "object_id",
+    "params": {},
+    "size": 1,
+    "type": "U8Scalar"
+   },
+   {
+    "doc": "X509_CERTIFICATE: index of the 128B certificate block 0 - 29 CHIP_ID, *_FW_VERSION: do not care FW_BANK: the BANK_ID of the requested bank",
+    "name": "block_index",
+    "params": {},
+    "size": 1,
+    "type": "U8Scalar"
+   }
+  ],
+  "TsL2GetInfoResponse": [
+   {
+    "doc": "The data content of the requested object block.",
+    "name": "object",
+    "params": {
+     "max_size": 128,
+     "min_size": 0
+    },
+    "size": null,
+    "type": "U8Array"
+   }
+  ],
+  "TsL2GetLogRequest": [],
+  "TsL2GetLogResponse": [
+   {
+    "doc": "Debug log message",
+    "name": "log_msg",
+    "params": {
+     "max_size": 252,
+     "min_size": 0
+    },
+    "size": null,
+    "type": "U8Array"
+   }
+  ],
+  "TsL2HandshakeRequest": [
+   {
+    "doc": "The Host MCU's Ephemeral X25519 public key. A little endian encoding of the x-coordinate from the public Curve25519 point.",
+    "name": "e_hpub",
+    "params": {
+     "size": 32
+    },
+    "size": 32,
+    "type": "U8Array"
+   },
+   {
+    "doc": "The index of the Pairing Key slot to establish a Secure Channel Session with (TROPIC01 fetches $S_{HiPub}$ from the Pairing Key slot specified in this field).",
+    "enum": {
+     "0": "PAIRING_KEY_SLOT_0",
+     "1": "PAIRING_KEY_SLOT_1",
+     "2": "PAIRING_KEY_SLOT_2",
+     "3": "PAIRING_KEY_SLOT_3"
+    },
+    "name": "pkey_index",
+    "params": {},
+    "size": 1,
+    "type": "U8Scalar"
+   }
+  ],
+  "TsL2HandshakeResponse": [
+   {
+    "doc": "TROPIC01's X25519 Ephemeral key.",
+    "name": "e_tpub",
+    "params": {
+     "size": 32
+    },
+    "size": 32,
+    "type": "U8Array"
+   },
+   {
+    "doc": "The Secure Channel Handshake Authentication Tag.",
+    "name": "t_tauth",
+    "params": {
+     "size": 16
+    },
+    "size": 16,
+    "type": "U8Array"
+   }
+  ],
+  "TsL2ResendRequest": [],
+  "TsL2ResendResponse": [],
+  "TsL2SleepRequest": [
+   {
+    "doc": "The type of Sleep mode TROPIC01 moves to.",
+    "enum": {
+     "5": "SLEEP_MODE"
+    },
+    "name": "sleep_kind",
+    "params": {},
+    "size": 1,
+    "type": "U8Scalar"
+   }
+  ],
+  "TsL2SleepResponse": [],
+  "TsL2StartupRequest": [
+   {
+    "doc": "",
+    "enum": {
+     "1": "REBOOT",
+     "3": "MAINTENANCE_REBOOT"
+    },
+    "name": "startup_id",
+    "params": {},
+    "size": 1,
+    "type": "U8Scalar"
+   }
+  ],
+  "TsL2StartupResponse": []
+ },
  "l2_requests": [
   {
    "id": 1,
