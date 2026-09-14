@@ -77,6 +77,18 @@ the cursor lights up at the executing line. Only the model's own files are
 traced — the pydantic and protocol plumbing is filtered out, or the reboot
 scenario would be four hundred steps of register reads.
 
+**All layers.** The same list carries **L3**: every one of the 23 commands sent
+for real inside a secure session on one chip, in an order where each finds the
+state the previous one left (a key generated, then read, then used to sign), plus
+two refusals on chips whose R-config forbids them. For each you get the plaintext
+command and result, the `Encrypted_Cmd` frames that carried them, and — for every
+exchange at every layer — the **L1** view: each chip-select transaction, MOSI and
+MISO, with the CHIP_STATUS byte decoded. The **L2 / L3 API** tab lists the
+command set with the Configuration Object register that gates each, read off the
+handlers' source; **Configuration & memory** adds the partitions — slot counts
+derived from the UAP registers' field names, sizes from the partition modules —
+and what a reboot clears.
+
 **3. Enforcement.** The generator's `--check` mode regenerates in memory and
 fails if `docs/model_spec.js` differs. That gate runs **before every push**:
 
@@ -99,7 +111,8 @@ than passing quietly.
 ts-tvl (Python)
    │
    │  introspect  ──  registers, fields, ids, tables, struct layout
-   │  execute     ──  boot transitions, wire traces, call traces
+   │  execute     ──  boot transitions, wire traces, call traces,
+   │                  every L3 command in a session, SPI transactions
    ▼
 docs/model_spec.js        ← generated, never edited
    │

@@ -256,6 +256,18 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
   <div class="panel" id="reg-detail"></div>
   <h2>All registers</h2>
   <div class="panel scroll"><div id="t-co"></div></div>
+  <h2>Memory — what the chip keeps</h2>
+  <p class="note">
+    The model has no address space: each partition is one attribute of the
+    chip object, and "non-volatile" means nothing clears it. Slot counts are
+    read off the UAP registers' field names (<code>gen_ecckey_slot_24_31</code>
+    ⇒ 32 slots); sizes off the partition modules. <b>I</b> is one-time
+    programmable, <b>R</b> is erasable.
+  </p>
+  <div class="panel scroll"><div id="t-mem"></div></div>
+  <h2>What a reboot clears</h2>
+  <p class="note" id="mem-reset-note"></p>
+  <div class="panel scroll"><div id="t-volatile"></div></div>
 </section>
 
 <section id="tab-l2" hidden>
@@ -285,6 +297,19 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
   <div class="panel" id="fwhdr"></div>
   <h2>Bank IDs</h2>
   <div class="panel scroll"><div id="t-banks"></div></div>
+  <h2>L3 commands — inside the secure channel</h2>
+  <p class="note">
+    All of these arrive encrypted inside <code>Encrypted_Cmd_Req</code>, in a
+    session only <code>Handshake_Req</code> can open — and both of those are
+    Application-only above, which is why there is no Start-up column here:
+    in maintenance mode L3 is not refused, it is unreachable. Each command is
+    gated by a Configuration Object register holding one privilege byte per
+    pairing-key slot. Click a command for its fields; <i>try it</i> shows it
+    sent for real, with the L2 frames that carried it and the SPI transactions
+    under those.
+  </p>
+  <div class="panel scroll"><div id="t-l3"></div></div>
+  <div class="panel" id="l3-detail"></div>
 </section>
 
 <section id="tab-try" hidden>
@@ -468,11 +493,11 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
 
   /* ---------- tabs ---------- */
   const TABS = [
-    ["boot", "Boot"], ["co", "Configuration Object"], ["l2", "L2 API"],
+    ["boot", "Boot"], ["co", "Configuration & memory"], ["l2", "L2 / L3 API"],
     ["try", "Try it"], ["examples", "Examples"], ["constants", "Constants"],
   ];
   // Old anchors keep working: those tabs were folded, not removed.
-  const TAB_ALIASES = { walk: "try", fw: "l2", about: "boot" };
+  const TAB_ALIASES = { walk: "try", fw: "l2", about: "boot", l3: "l2", memory: "co" };
   const nav = $("tabs");
   TABS.forEach(([id, label], i) => {
     const b = el("button", { textContent: label });
@@ -804,7 +829,9 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
   });
 
   /* ================= TRY IT ================= */
-  const X = S.exchanges;
+  // L2 exchanges and L3 exchanges in one list: the picker shows both, the
+  // pane renders each its own way, the trace below follows either.
+  const X = [...S.exchanges, ...(S.l3_exchanges || []).map((e) => ({ ...e, layer: "L3", request_class: e.command_class }))];
   // There is one chip, so there is one mode. This panel reads `st.mode`, the
   // same state the boot panel drives - rebooting there changes what you can
   // send here, which is the entire point of modelling modes at all.
@@ -840,13 +867,16 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
     });
   }
 
-  function renderPane(node, e, isPrimary, counterpart) {
+  function renderPane(node, e, isPrimary, counterpart, key, mode) {
     node.innerHTML = "";
     if (!e) {
-      node.append(el("div", { className: "sub",
-        textContent: "not captured in this mode" }));
+      const isL3 = X.some((x) => keyOf(x) === key && x.layer === "L3");
+      node.append(el("div", { className: "sub", textContent: isL3 && mode === "START_UP"
+        ? "not reachable in Start-up mode: there is no session to carry it — Handshake_Req is UNKNOWN_REQ there"
+        : "not captured in this mode" }));
       return;
     }
+    if (e.layer === "L3") { renderL3Pane(node, e); return; }
     const head = el("div", { className: "pane-h" });
     head.append(el("span", { className: "who" },
       [tag(e.mode === "START_UP" ? "boot" : "app", e.mode)]));
@@ -913,6 +943,7 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
       node.append(box);
     }
 
+    renderTransactions(node, e.transactions);
     node.append(el("div", { className: "sub", textContent:
       "mode after: " + e.mode_after + "   ·   CHIP_STATUS " + hex(e.chip_status_after) }));
 
@@ -922,6 +953,60 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
         ? "identical to the other mode, byte for byte"
         : "differs from the other mode" }));
     }
+  }
+
+  // L1: the chip-select transactions under an exchange. The first MISO byte
+  // of every transaction is CHIP_STATUS; a poll is the host sending GET_RESP.
+  function renderTransactions(node, txns) {
+    if (!txns || !txns.length) return;
+    const flags = (b) => S.chip_status_flags.filter((f) => b & f.value).map((f) => f.name).join("+") || "0";
+    const d = el("details", { className: "txn" });
+    d.append(el("summary", { className: "sub", textContent: "L1 · " + txns.length + " SPI transaction" + (txns.length === 1 ? "" : "s") + " (chip-select low → high)" }));
+    d.append(table(["#", "host", "MOSI →", "← MISO", "CHIP_STATUS"], txns.map((t, i) => [
+      String(i + 1), t.kind === "poll" ? "GET_RESP poll" : "send frame",
+      el("span", { className: "hexblock", textContent: t.mosi.length > 96 ? t.mosi.slice(0, 96) + "…" : t.mosi }),
+      el("span", { className: "hexblock", textContent: t.miso.length > 96 ? t.miso.slice(0, 96) + "…" : t.miso }),
+      t.chip_status === null ? "—" : hex(t.chip_status) + " " + flags(t.chip_status),
+    ])));
+    node.append(d);
+  }
+
+  // An L3 exchange: the plaintext the two ends see, then what actually
+  // crossed the wire to carry it.
+  function renderL3Pane(node, e) {
+    node.classList.add("l3pane");
+    const head = el("div", { className: "pane-h" });
+    head.append(el("span", { className: "who" }, [tag("app", e.mode), document.createTextNode(" "), tag("hot", "L3 · in a session")]));
+    head.append(el("span", { className: "sub", textContent: e.command_class }));
+    node.append(head);
+    const st = el("div", { className: "big" });
+    const cls = e.result_name === "OK" ? "app" : e.result_name === "UNAUTHORIZED" ? "hot" : "boot";
+    st.append(tag(cls, e.error ? "raised " + e.error : hex(e.result_code) + " " + (e.result_name || "?")));
+    node.append(st);
+    if (Object.keys(e.params || {}).length) {
+      node.append(el("div", { className: "sub", textContent: Object.entries(e.params).map(([k, v]) => k + "=" + v).join("  ") }));
+    }
+    const plain = (label, hexstr, first, rest) => {
+      node.append(el("div", { className: "sub", textContent: label }));
+      const row = el("div", { className: "frame" });
+      const a = el("span", { className: "fld status" }); a.append(el("span", { className: "n", textContent: first })); a.append(document.createTextNode(hexstr.slice(0, 2)));
+      row.append(a);
+      if (hexstr.length > 2) { const b = el("span", { className: "fld data" }); b.append(el("span", { className: "n", textContent: rest })); b.append(document.createTextNode(hexstr.slice(2).replace(/(..)/g, "$1 ").trim())); row.append(b); }
+      node.append(row);
+    };
+    plain("→ command, plaintext (what the host encrypts)", e.command, "CMD_ID", "fields");
+    node.append(el("div", { className: "sub", textContent: e.repr_command }));
+    if (e.result) {
+      plain("← result, plaintext (what the host decrypts)", e.result, "RESULT", "fields");
+      if (e.repr_result) node.append(el("div", { className: "sub", textContent: e.repr_result }));
+    }
+    if (e.note) node.append(el("div", { className: "decoded" }, [el("span", { className: "doc", textContent: e.note })]));
+    (e.l2_frames || []).forEach((f, i) => {
+      node.append(el("div", { className: "sub", textContent: "carried as L2 Encrypted_Cmd" + (e.l2_frames.length > 1 ? " chunk " + (i + 1) : "") + " — ciphertext, not the bytes above" }));
+      renderFrames(node, f.request, f.responses[f.responses.length - 1] || "");
+    });
+    renderTransactions(node, e.transactions);
+    node.append(el("div", { className: "sub", textContent: "CHIP_STATUS after: " + hex(e.chip_status_after) + (e.own_chip ? "   ·   on its own chip, with the R-config that forbids it" : "   ·   on the shared chip, in sequence") }));
   }
 
   function renderTry() {
@@ -946,7 +1031,8 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
         const g = k.split(" · ")[0];
         if (g !== group) {
           group = g;
-          optgroup = el("optgroup"); optgroup.label = g;
+          const isL3 = X.some((e) => keyOf(e) === k && e.layer === "L3");
+          optgroup = el("optgroup"); optgroup.label = (isL3 ? "L3 · " : "L2 · ") + g;
           pick.append(optgroup);
         }
         optgroup.append(el("option", { value: k, textContent: k.split(" · ")[1] }));
@@ -959,8 +1045,8 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
       .find((m) => m !== st.mode) || st.mode;
     const a = exchange(st.mode, tryState.key);
     const b = exchange(other, tryState.key);
-    renderPane($("try-main"), a, true, b);
-    renderPane($("try-other"), b, false, a);
+    renderPane($("try-main"), a, true, b, tryState.key, st.mode);
+    renderPane($("try-other"), b, false, a, tryState.key, other);
     if (typeof syncWalk === "function" && WK_READY) syncWalk();
   }
 
@@ -1426,6 +1512,65 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
     ])));
 
   /* ================= CONSTANTS ================= */
+  /* ================= MEMORY ================= */
+  {
+    const M = S.memory || { partitions: [], volatile: [], reset_note: "" };
+    const cmds = (c) => Object.entries(c).filter(([, v]) => v.length)
+      .map(([k, v]) => k + ": " + v.join(", ")).join("   ·   ");
+    put("t-mem", table(["partition", "memory", "slots", "slot size", "commands", "note"],
+      M.partitions.map((p) => [
+        el("span", {}, [el("strong", { textContent: p.name }),
+          el("span", { className: "sub", textContent: "  " + p.attr })]),
+        tag(p.memory === "I" ? "boot" : "app", p.memory === "I" ? "I · OTP" : "R · erasable"),
+        String(p.slots), p.slot_size,
+        el("span", { className: "doc", textContent: cmds(p.commands) }),
+        el("span", { className: "doc", textContent: p.note }),
+      ])));
+    $("mem-reset-note").textContent = M.reset_note;
+    put("t-volatile", table(["state", "attribute", "cleared by"],
+      M.volatile.map((v) => [v.name, el("code", { textContent: v.attr }), el("code", { textContent: v.cleared_by })])));
+  }
+
+  /* ================= L3 API ================= */
+  {
+    const L3 = S.l3_api || [];
+    const fieldList = (fs) => fs.map((f) => f.name + (f.size ? "[" + f.size + "]" : "")).join(", ") || "—";
+    put("t-l3", table(["CMD_ID", "command", "gated by", "fields in", "fields out", "handler"],
+      L3.map((c) => [
+        hex(c.id),
+        tryLink(c.name, (e) => e.layer === "L3" && e.command_id === c.id, "APPLICATION"),
+        el("span", {}, c.uap.map((u) => el("code", { textContent: u.register + (u.fields.length > 1 ? " · " + u.fields.length + " fields" : "." + u.fields[0]) }))),
+        el("span", { className: "doc", textContent: fieldList(c.command_fields) }),
+        el("span", { className: "doc", textContent: fieldList(c.result_fields) }),
+        el("code", { textContent: c.handler + ":" + c.handler_line }),
+      ])));
+    // Clicking a row name goes to Try it; clicking anywhere else on the row shows the fields.
+    [...document.querySelectorAll("#t-l3 tbody tr")].forEach((tr, i) => {
+      tr.style.cursor = "pointer";
+      tr.addEventListener("click", (ev) => { if (!ev.target.closest("button")) showL3(L3[i]); });
+    });
+    function showL3(c) {
+      const box = $("l3-detail"); box.innerHTML = "";
+      box.append(el("div", {}, [el("strong", { textContent: c.name }),
+        el("span", { className: "sub", textContent: "  CMD_ID " + hex(c.id) + " · " + c.command_class + " → " + c.result_class + (c.doc ? " · " + c.doc : "") })]));
+      const fields = (title, fs) => {
+        box.append(el("div", { className: "sub", textContent: title, style: "margin-top:8px" }));
+        box.append(fs.length ? table(["field", "type", "size", "description"], fs.map((f) => [
+          f.name, f.type, f.size ? String(f.size) : Object.entries(f.params).map(([k, v]) => k + "=" + v).join(" ") || "—",
+          el("span", { className: "doc", textContent: f.doc || "—" })]))
+          : el("div", { className: "sub", textContent: "none" }));
+      };
+      fields("→ command fields (after the CMD_ID byte)", c.command_fields);
+      fields("← result fields (after the RESULT byte)", c.result_fields);
+      if (Object.keys(c.result_codes).length) {
+        box.append(el("div", { className: "sub", textContent: "command-specific result codes: " +
+          Object.entries(c.result_codes).map(([k, v]) => k + " = " + hex(v)).join(", "), style: "margin-top:8px" }));
+      }
+      box.append(el("div", { className: "sub", textContent: "gated by " + c.uap.map((u) => u.register + " [" + u.fields.join(", ") + "]").join("; ") + " — checked in " + c.handler + " before anything else runs", style: "margin-top:8px" }));
+    }
+    if (L3.length) showL3(L3[0]);
+  }
+
   const K = S.constants;
 
   // Every representation of a number the page shows is derived from the number

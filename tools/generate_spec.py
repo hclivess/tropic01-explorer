@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import contextlib
 import hashlib
 import inspect
 import itertools
@@ -33,8 +34,9 @@ import pathlib
 import re
 import subprocess
 import sys
+import textwrap
 import types
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from tvl.api.l2_api import (
     L2Enum,
@@ -47,7 +49,18 @@ from tvl.api.l2_api import (
     TsL2SleepRequest,
     TsL2StartupRequest,
 )
-from tvl.constants import L1ChipStatusFlag, L2StatusEnum
+from tvl.api import l3_api as l3_mod
+from tvl.api.l3_api import L3Enum
+from tvl.constants import (
+    CERTIFICATE_SIZE, CHIP_ID_SIZE, L1ChipStatusFlag, L2IdFieldEnum, L2StatusEnum,
+    L3ResultFieldEnum, S_HI_PUB_NB_SLOTS,
+)
+from tvl.messages.l3_messages import L3Command, L3Result
+from tvl.targets.model import tropic01_l3_api_impl as l3_impl
+from tvl.targets.model.internal import mac_and_destroy as mad_mod
+from tvl.targets.model.internal import mcounter as mcounter_mod
+from tvl.targets.model.internal import pairing_keys as pairing_mod
+from tvl.targets.model.internal import user_data_partition as udata_mod
 from tvl.host.host import Host
 from tvl.targets.model import tropic01_l2_api_impl as l2_impl
 from tvl.targets.model.configuration_object_impl import (
@@ -246,15 +259,13 @@ def get_info_objects() -> Dict[str, List[Dict[str, Any]]]:
             {
                 "name": oid(object_id).name,
                 "value": int(object_id),
-                "provider": provider,
+                "provider": provider.__name__,
                 # The provider's own docstring says what it serves.
-                "doc": " ".join(
-                    (getattr(Tropic01Model, provider).__doc__ or "").split()
-                ),
+                "doc": " ".join((provider.__doc__ or "").split()),
             }
             for object_id, provider in sorted(providers.items())
         ]
-        for mode, providers in l2_impl.GET_INFO_OBJECTS.items()
+        for mode, providers in l2_impl.L2APIImplementation.GET_INFO_OBJECTS.items()
     }
 
 
@@ -750,7 +761,8 @@ def exchanges() -> List[Dict[str, Any]]:
                 continue  # mode not reachable for this build
             group, label, params, request = request_cases(host)[index][:4]
             raw_request = request.to_bytes()
-            raw_response = bytes(host.send_request(raw_request))
+            with spi_capture(model) as transactions:
+                raw_response = bytes(host.send_request(raw_request))
             payload = raw_response[2:-2] if len(raw_response) >= 4 else b""
             object_id = getattr(request, "object_id", None)
             out.append(
@@ -774,6 +786,9 @@ def exchanges() -> List[Dict[str, Any]]:
                     "status": raw_response[0] if raw_response else None,
                     "chip_status_after": read_chip_status(model),
                     "mode_after": model.chip_mode.name,
+                    # L1: every chip-select low..high the host drove for this
+                    # exchange, MOSI and MISO, first MISO byte = CHIP_STATUS.
+                    "transactions": transactions,
                 }
             )
     return out
@@ -801,12 +816,20 @@ def call_traces() -> Dict[str, Any]:
         "tvl/targets/model/internal/spi_fsm.py",
         "tvl/targets/model/internal/chip_mode.py",
         "tvl/targets/model/internal/fw_bank.py",
+        "tvl/targets/model/tropic01_l3_api_impl.py",
+        "tvl/targets/model/internal/command_buffer.py",
+        "tvl/targets/model/internal/pairing_keys.py",
+        "tvl/targets/model/internal/ecc_keys.py",
+        "tvl/targets/model/internal/mcounter.py",
+        "tvl/targets/model/internal/user_data_partition.py",
+        "tvl/targets/model/internal/mac_and_destroy.py",
+        "tvl/crypto/encrypted_session.py",
         "tvl/host/host.py",
     )
     # Property getters and comprehensions are noise; the CO internals (27
     # registers ANDed on every `self.config`) would swamp the boot scenario.
     skip_names = {"set_logger", "target_driver", "<genexpr>", "<listcomp>", "<dictcomp>", "<setcomp>"}
-    MAX_STEPS, MAX_DEPTH = 400, 12
+    MAX_STEPS, MAX_DEPTH = 900, 14
 
     def scrub(text: str) -> str:
         return re.sub(r"(<[^<>]*? at )0x[0-9a-f]+(>)", r"\g<1>0x...\g<2>", text)
@@ -916,15 +939,18 @@ def call_traces() -> Dict[str, Any]:
     def scenario(title: str, mode: ChipMode, request: Any, *, then_read: bool = False,
                  r_config: Optional[Dict[str, int]] = None, note: str = "",
                  host: Optional[Host] = None, model: Optional[Tropic01Model] = None,
-                 group: str = "", label: str = "") -> None:
+                 group: str = "", label: str = "", layer: str = "L2") -> None:
         if model is None or host is None:
             model, host = fresh(mode, r_config=r_config)
         # group/label match the Try-it exchange this scenario belongs to.
         entry = {"title": title, "mode": mode.name, "request_class": type(request).__name__,
                  "request": request.to_bytes().hex(), "note": note,
-                 "group": group, "label": label}
+                 "group": group, "label": label, "layer": layer}
 
         def run() -> None:
+            if layer == "L3":
+                entry["response"] = host.send_command(request).to_bytes().hex()
+                return
             entry["response"] = bytes(host.send_request(request.to_bytes())).hex()
             if then_read:
                 # The restart lands on the next transaction, as it does on silicon.
@@ -962,6 +988,16 @@ def call_traces() -> Dict[str, Any]:
                      then_read=group == "Startup",
                      note=notes.get((mode.name, group, label), ""),
                      group=group, label=label)
+    # L3: the same sequence Try it shows, one chip, one session, in order.
+    model, host = paired_chip(); open_session(host)
+    for group, label, _params, command, note, r_config in l3_cases():
+        if r_config is not None:
+            model_r, host_r = paired_chip(r_config); open_session(host_r)
+            scenario(f"{group} · {label}", ChipMode.APPLICATION, command, model=model_r,
+                     host=host_r, note=note, group=group, label=label, layer="L3")
+            continue
+        scenario(f"{group} · {label}", ChipMode.APPLICATION, command, model=model, host=host,
+                 note=note, group=group, label=label, layer="L3")
 
     for sc in scenarios:
         if len(sc["steps"]) < 3:
@@ -1442,6 +1478,361 @@ def build() -> Dict[str, Any]:
     return spec
 
 
+
+# --------------------------------------------------------------------------
+# L1: the SPI transactions under an exchange
+# --------------------------------------------------------------------------
+
+@contextlib.contextmanager
+def spi_capture(model: Tropic01Model):
+    """Every chip-select low..high the host drives on `model`, MOSI and MISO.
+
+    The host talks to the model through the same three calls a real SPI
+    driver would make - `spi_drive_csn_low`, `spi_send`, `spi_drive_csn_high`
+    (`tvl/host/low_level_communication.py`) - so wrapping those on the
+    instance sees exactly what a logic analyser on the bus would.
+    """
+    log: List[Dict[str, Any]] = []
+    current: Dict[str, bytes] = {}
+    low, send, high = model.spi_drive_csn_low, model.spi_send, model.spi_drive_csn_high
+
+    def csn_low() -> None:
+        current.clear(); current["mosi"] = b""; current["miso"] = b""
+        low()
+
+    def spi_send(data: Any) -> Any:
+        out = send(data)
+        if current:
+            current["mosi"] += bytes(data); current["miso"] += bytes(out)
+        return out
+
+    def csn_high() -> None:
+        high()
+        if current:
+            mosi, miso = current["mosi"], current["miso"]
+            log.append({
+                "mosi": mosi.hex(), "miso": miso.hex(),
+                "chip_status": miso[0] if miso else None,
+                # What the host was doing: sending a frame, or polling for one.
+                "kind": "poll" if mosi[:1] == bytes([L2IdFieldEnum.GET_RESP]) else "send",
+            })
+            current.clear()
+
+    model.spi_drive_csn_low = csn_low  # type: ignore[method-assign]
+    model.spi_send = spi_send  # type: ignore[method-assign]
+    model.spi_drive_csn_high = csn_high  # type: ignore[method-assign]
+    try:
+        yield log
+    finally:
+        del model.spi_drive_csn_low, model.spi_send, model.spi_drive_csn_high
+
+
+def frames_from_transactions(transactions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """The L2 frames under a list of SPI transactions: a `send` carries one
+    request frame on MOSI; each following `poll` carries a response frame on
+    MISO after the CHIP_STATUS byte, STATUS RSP_LEN DATA CRC16."""
+    frames: List[Dict[str, Any]] = []
+    for t in transactions:
+        if t["kind"] == "send":
+            frames.append({"request": t["mosi"], "responses": []})
+        elif frames:
+            miso = bytes.fromhex(t["miso"])[1:]
+            if len(miso) >= 2:
+                frames[-1]["responses"].append(miso[: 4 + miso[1]].hex())
+    return frames
+
+
+# --------------------------------------------------------------------------
+# L3: the command set, its gates, and every command sent for real
+# --------------------------------------------------------------------------
+
+_HOST_PRIV = bytes(range(32))
+_TROPIC_PRIV = bytes(range(32, 64))
+
+
+def _x25519_pub(priv: bytes) -> bytes:
+    from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
+    return X25519PrivateKey.from_private_bytes(priv).public_key().public_bytes_raw()
+
+
+def paired_chip(r_config: Optional[Dict[str, int]] = None) -> Tuple[Tropic01Model, Host]:
+    """A fresh chip in Application mode with the host's key in pairing slot 0,
+    and a host that knows it. Same keys and pinned entropy as every other
+    capture, so the bytes are reproducible."""
+    host_pub, tropic_pub = _x25519_pub(_HOST_PRIV), _x25519_pub(_TROPIC_PRIV)
+    model = Tropic01Model(
+        debug_random_value=bytes(4), busy_iter=[False],
+        s_t_priv=_TROPIC_PRIV, s_t_pub=tropic_pub,
+        **({"r_config": ConfigurationObjectImpl.from_dict(r_config)} if r_config else {}),
+    )
+    model.i_pairing_keys[0].write(host_pub)
+    model.power_on()
+    host = Host(
+        s_h_priv=[_HOST_PRIV], s_h_pub=[host_pub], s_t_pub=tropic_pub,
+        pairing_key_index=0, debug_random_value=bytes(4),
+    ).set_target(model)
+    return model, host
+
+
+def open_session(host: Host) -> int:
+    """Handshake on slot 0; returns the L2 status. The host processes the
+    response itself, so after this both sides hold the session keys."""
+    response = host.send_request(
+        TsL2HandshakeRequest(e_hpub=host.session.create_handshake_request(), pkey_index=0)
+    )
+    return int(response.status.value)
+
+
+def l3_cases() -> List[Tuple[str, str, Dict[str, Any], Any, str, Optional[Dict[str, int]]]]:
+    """(group, label, params, command, note, r_config) - every L3 command once,
+    in an order where each finds the state the one before it left. r_config
+    is None for the shared chip; a case with its own config gets its own chip."""
+    L = l3_mod
+    P256, ED = L.TsL3EccKeyGenerateCommand.CurveEnum.P256, L.TsL3EccKeyGenerateCommand.CurveEnum.ED25519
+    key = bytes(range(1, 33))
+    return [
+        ("Ping", "loopback 5 bytes", {"DATA_IN": "hello"}, L.TsL3PingCommand(data_in=b"hello"),
+         "The simplest L3 command: the chip echoes the bytes. Still gated by CFG_UAP_PING.", None),
+        ("Random", "8 bytes", {"N_BYTES": 8}, L.TsL3RandomValueGetCommand(n_bytes=8),
+         "Pinned entropy, so the bytes are reproducible here; a real chip would differ.", None),
+        ("Pairing key", "read slot 0 (the session's own key)", {"SLOT": 0}, L.TsL3PairingKeyReadCommand(slot=0), "", None),
+        ("Pairing key", "write slot 1", {"SLOT": 1}, L.TsL3PairingKeyWriteCommand(slot=1, s_hipub=key),
+         "OTP: a slot is written once.", None),
+        ("Pairing key", "read slot 1 (just written)", {"SLOT": 1}, L.TsL3PairingKeyReadCommand(slot=1), "", None),
+        ("Pairing key", "invalidate slot 1", {"SLOT": 1}, L.TsL3PairingKeyInvalidateCommand(slot=1),
+         "Irreversible: the slot can never be written again.", None),
+        ("Pairing key", "read slot 3 (blank)", {"SLOT": 3}, L.TsL3PairingKeyReadCommand(slot=3), "", None),
+        ("R-config", "read CFG_START_UP (0x000)", {"ADDRESS": "0x000"}, L.TsL3RConfigReadCommand(address=0x000), "", None),
+        ("R-config", "write CFG_SLEEP_MODE (0x018) = 0xFFFFFFFE", {"ADDRESS": "0x018", "VALUE": "0xFFFFFFFE"},
+         L.TsL3RConfigWriteCommand(address=0x018, value=0xFFFFFFFE),
+         "Clears SLEEP_MODE_EN in R-config. Takes effect at the next boot - the running chip keeps its latch.", None),
+        ("R-config", "read CFG_SLEEP_MODE (0x018) back", {"ADDRESS": "0x018"}, L.TsL3RConfigReadCommand(address=0x018),
+         "Memory shows the write; the latch the chip runs on does not, until a reboot.", None),
+        ("R-config", "erase", {}, L.TsL3RConfigEraseCommand(), "All 512 bytes back to 0xFF.", None),
+        ("I-config", "read CFG_START_UP (0x000)", {"ADDRESS": "0x000"}, L.TsL3IConfigReadCommand(address=0x000), "", None),
+        ("I-config", "write CFG_GPO (0x014) bit 0", {"ADDRESS": "0x014", "BIT_INDEX": 0},
+         L.TsL3IConfigWriteCommand(address=0x014, bit_index=0),
+         "One bit, one direction: I-config only ever clears, and there is no erase.", None),
+        ("User data", "write slot 0", {"UDATA_SLOT": 0, "DATA": "hello"}, L.TsL3RMemDataWriteCommand(udata_slot=0, data=b"hello"), "", None),
+        ("User data", "read slot 0", {"UDATA_SLOT": 0}, L.TsL3RMemDataReadCommand(udata_slot=0), "", None),
+        ("User data", "erase slot 0", {"UDATA_SLOT": 0}, L.TsL3RMemDataEraseCommand(udata_slot=0), "", None),
+        ("ECC key", "generate Ed25519 in slot 0", {"SLOT": 0, "CURVE": "ED25519"},
+         L.TsL3EccKeyGenerateCommand(slot=0, curve=ED), "", None),
+        ("ECC key", "read slot 0 (public part)", {"SLOT": 0}, L.TsL3EccKeyReadCommand(slot=0),
+         "Only the public key ever leaves the chip.", None),
+        ("Sign", "EdDSA with slot 0", {"SLOT": 0, "MSG": "message"}, L.TsL3EddsaSignCommand(slot=0, msg=b"message"), "", None),
+        ("ECC key", "store a P-256 key in slot 1", {"SLOT": 1, "CURVE": "P256"},
+         L.TsL3EccKeyStoreCommand(slot=1, curve=P256, k=key), "", None),
+        ("Sign", "ECDSA with slot 1", {"SLOT": 1, "MSG_HASH": "32 bytes"},
+         L.TsL3EcdsaSignCommand(slot=1, msg_hash=bytes(range(32))), "", None),
+        ("ECC key", "erase slot 1", {"SLOT": 1}, L.TsL3EccKeyEraseCommand(slot=1), "", None),
+        ("Counter", "init counter 0 to 5", {"MCOUNTER_INDEX": 0, "MCOUNTER_VAL": 5},
+         L.TsL3McounterInitCommand(mcounter_index=0, mcounter_val=5), "", None),
+        ("Counter", "update counter 0", {"MCOUNTER_INDEX": 0}, L.TsL3McounterUpdateCommand(mcounter_index=0),
+         "Monotonic means down only: 5 becomes 4.", None),
+        ("Counter", "get counter 0", {"MCOUNTER_INDEX": 0}, L.TsL3McounterGetCommand(mcounter_index=0), "", None),
+        ("Mac-and-Destroy", "slot 0", {"SLOT": 0, "DATA_IN": "32 bytes"},
+         L.TsL3MacAndDestroyCommand(slot=0, data_in=bytes(range(32))),
+         "The MAC is returned and the slot is destroyed in the same command - the PIN-attempt primitive.", None),
+        # Refusals. A fresh chip each, with the R-config that forbids it.
+        ("Ping", "refused: CFG_UAP_PING slot-0 privilege cleared", {"DATA_IN": "x"},
+         L.TsL3PingCommand(data_in=b"x"),
+         "UNAUTHORIZED from check_access_privileges: the session's pairing key has no right to this command.",
+         {"cfg_uap_ping": 0xFFFFFF00}),
+        ("Random", "refused: CFG_UAP_RANDOM_VALUE_GET slot-0 privilege cleared", {"N_BYTES": 4},
+         L.TsL3RandomValueGetCommand(n_bytes=4), "", {"cfg_uap_random_value_get": 0xFFFFFF00}),
+    ]
+
+
+def _field_specs(cls: type) -> List[Dict[str, Any]]:
+    """Every field declared on a message class - name, type, datafield
+    parameters and the docstring under it - read from its source."""
+    tree = ast.parse(textwrap.dedent(inspect.getsource(cls)))
+    body = tree.body[0].body  # type: ignore[attr-defined]
+    out: List[Dict[str, Any]] = []
+    for i, node in enumerate(body):
+        if not (isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name)):
+            continue
+        params: Dict[str, Any] = {}
+        if isinstance(node.value, ast.Call):
+            for kw in node.value.keywords:
+                try:
+                    params[kw.arg or ""] = ast.literal_eval(kw.value)
+                except Exception:
+                    params[kw.arg or ""] = ast.unparse(kw.value)
+        doc = ""
+        nxt = body[i + 1] if i + 1 < len(body) else None
+        if isinstance(nxt, ast.Expr) and isinstance(nxt.value, ast.Constant) and isinstance(nxt.value.value, str):
+            doc = " ".join(nxt.value.value.split())
+        typ = ast.unparse(node.annotation)
+        size = {"U8Scalar": 1, "U16Scalar": 2, "U32Scalar": 4}.get(typ)
+        if size is None and "size" in params:
+            size = params["size"]
+        out.append({"name": node.target.id, "type": typ, "size": size, "params": params, "doc": doc})
+    return out
+
+
+def l3_api() -> List[Dict[str, Any]]:
+    """The 23 L3 commands: id, fields in and out, result codes, the handler,
+    and the Configuration Object register that gates each - all read off the
+    generated API module and the handler's source."""
+    docs = attribute_docs(l3_mod)
+    enum_docs = docs.get("L3Enum", {})
+    commands = {c.ID: c for c in vars(l3_mod).values()
+                if inspect.isclass(c) and issubclass(c, L3Command) and hasattr(c, "ID")}
+    results = {c.ID: c for c in vars(l3_mod).values()
+               if inspect.isclass(c) and issubclass(c, L3Result) and hasattr(c, "ID")}
+    impl_cls = next(c for c in vars(l3_impl).values()
+                    if inspect.isclass(c) and c.__module__ == l3_impl.__name__
+                    and hasattr(c, "ts_l3_ping"))
+    handlers: Dict[type, Any] = {}
+    for name, fn in inspect.getmembers(impl_cls, inspect.isfunction):
+        if name.startswith("ts_l3_"):
+            hints = fn.__annotations__
+            cmd_type = next((v for k, v in hints.items() if k != "return"), None)
+            if cmd_type is not None:
+                handlers[cmd_type] = fn
+    out = []
+    for member in sorted(L3Enum, key=lambda e: e.value):
+        cmd, res = commands.get(member.value), results.get(member.value)
+        fn = handlers.get(cmd) if cmd else None
+        uap: List[Dict[str, Any]] = []
+        line = None
+        if fn is not None:
+            fn = inspect.unwrap(fn)  # the meta-model wraps every handler
+            src = inspect.getsource(fn); line = inspect.getsourcelines(fn)[1]
+            for reg in sorted(set(re.findall(r"self\.config\.(cfg_uap_\w+)", src))):
+                fields = sorted(set(re.findall(r"(?:config|self\.config\.%s)\.(\w+)" % reg, src)))
+                uap.append({"register": reg.upper(), "fields": [f for f in fields if f != reg]})
+        result_codes = {}
+        if res is not None and hasattr(res, "ResultEnum"):
+            result_codes = {m.name: int(m.value) for m in res.ResultEnum}
+        out.append({
+            "name": member.name, "id": int(member.value), "doc": enum_docs.get(member.name, ""),
+            "command_class": cmd.__name__ if cmd else None,
+            "result_class": res.__name__ if res else None,
+            "command_fields": [f for f in _field_specs(cmd) if f["name"] != "id"] if cmd else [],
+            "result_fields": [f for f in _field_specs(res) if f["name"] != "result"] if res else [],
+            "result_codes": result_codes,
+            "handler": fn.__name__ if fn else None, "handler_line": line,
+            "uap": uap,
+        })
+    return out
+
+
+def l3_exchanges() -> List[Dict[str, Any]]:
+    """Every L3 command sent for real inside a secure session: the plaintext
+    command and result, the L2 Encrypted_Cmd frames that carried them, and the
+    SPI transactions under those. One chip for the sequence so state carries
+    (a key generated, then read, then used); refusal cases get their own."""
+    model, host = paired_chip(); open_session(host)
+    out: List[Dict[str, Any]] = []
+    for group, label, params, command, note, r_config in l3_cases():
+        m, h = (model, host)
+        if r_config is not None:
+            m, h = paired_chip(r_config); open_session(h)
+        error = None
+        with spi_capture(m) as transactions:
+            try:
+                result = h.send_command(command)
+            except Exception as exc:  # a command that raises is worth showing
+                result, error = None, f"{type(exc).__name__}: {exc}"
+        frames = frames_from_transactions(transactions)
+        code = int(result.result.value) if result is not None else None
+        # A non-OK result is parsed as a generic DefaultL3Result, so the
+        # command-specific codes live on the result class the command *would*
+        # have produced - look that up by CMD_ID, then fall back to the common ones.
+        expected = next((c for c in vars(l3_mod).values() if inspect.isclass(c)
+                         and issubclass(c, L3Result) and getattr(c, "ID", None) == command.ID), None)
+        name = None
+        if code is not None:
+            for enum in (getattr(expected, "ResultEnum", None), L3ResultFieldEnum):
+                try:
+                    name = enum(code).name if enum else None  # type: ignore[misc]
+                except ValueError:
+                    continue
+                if name:
+                    break
+        out.append({
+            "layer": "L3", "mode": "APPLICATION", "group": group, "label": label, "params": params,
+            "command_class": type(command).__name__, "command_id": int(command.ID),
+            "result_class": type(result).__name__ if result is not None else None,
+            "command": command.to_bytes().hex(),
+            "result": result.to_bytes().hex() if result is not None else None,
+            "result_code": code, "result_name": name, "error": error,
+            "repr_command": str(command), "repr_result": str(result) if result is not None else "",
+            "l2_frames": frames, "transactions": transactions,
+            "chip_status_after": read_chip_status(m), "note": note,
+            "own_chip": r_config is not None,
+        })
+    return out
+
+
+# --------------------------------------------------------------------------
+# Memory: what the chip keeps, in how many slots, and who touches it
+# --------------------------------------------------------------------------
+
+def memory_map() -> Dict[str, Any]:
+    """The chip's storage as the model holds it. Slot counts come from the UAP
+    registers' field names (`gen_ecckey_slot_24_31` ⇒ 32 slots), sizes from
+    the partition modules' constants."""
+    regs = {r["name"]: r for r in co_registers()}
+
+    def slots_of(register: str) -> int:
+        upper = 0
+        for f in regs[register]["fields"]:
+            m = re.search(r"_(\d+)_(\d+)$", f["name"])
+            if m:
+                upper = max(upper, int(m.group(2)))
+        return upper + 1
+
+    partitions = [
+        {"name": "Pairing key slots", "memory": "I", "attr": "i_pairing_keys",
+         "slots": S_HI_PUB_NB_SLOTS, "slot_size": f"{pairing_mod.KEY_SIZE} B (X25519 public key)",
+         "commands": {"write": ["PAIRING_KEY_WRITE"], "read": ["PAIRING_KEY_READ"], "erase": ["PAIRING_KEY_INVALIDATE"]},
+         "note": "blank → written → invalidated, never back; slot 0 is provisioned by Tropic Square"},
+        {"name": "I-config", "memory": "I", "attr": "i_config", "slots": 128, "slot_size": "4 B register",
+         "commands": {"write": ["I_CONFIG_WRITE"], "read": ["I_CONFIG_READ"], "erase": []},
+         "note": "one bit per write, 1→0 only, no erase - the floor the chip can never rise above"},
+        {"name": "R-config", "memory": "R", "attr": "r_config", "slots": 128, "slot_size": "4 B register",
+         "commands": {"write": ["R_CONFIG_WRITE"], "read": ["R_CONFIG_READ"], "erase": ["R_CONFIG_ERASE"]},
+         "note": "the adjustable layer; the chip runs on i_config & r_config, latched at boot"},
+        {"name": "User data", "memory": "R", "attr": "r_user_data",
+         "slots": slots_of("CFG_UAP_R_MEM_DATA_WRITE"), "slot_size": f"up to {udata_mod.SLOT_SIZE_BYTES} B",
+         "commands": {"write": ["R_MEM_DATA_WRITE"], "read": ["R_MEM_DATA_READ"], "erase": ["R_MEM_DATA_ERASE"]},
+         "note": "general-purpose secure storage"},
+        {"name": "ECC key slots", "memory": "R", "attr": "r_ecc_keys",
+         "slots": slots_of("CFG_UAP_ECC_KEY_GENERATE"), "slot_size": "32 B private key + curve + origin",
+         "commands": {"write": ["ECC_KEY_GENERATE", "ECC_KEY_STORE"], "read": ["ECC_KEY_READ (public part only)"],
+                      "erase": ["ECC_KEY_ERASE"], "use": ["ECDSA_SIGN", "EDDSA_SIGN"]},
+         "note": "the private key never leaves the chip; signing happens inside"},
+        {"name": "Monotonic counters", "memory": "R", "attr": "r_mcounters",
+         "slots": slots_of("CFG_UAP_MCOUNTER_INIT"), "slot_size": f"{mcounter_mod.MCOUNTER_SIZE}-bit",
+         "commands": {"write": ["MCOUNTER_INIT"], "read": ["MCOUNTER_GET"], "erase": [], "use": ["MCOUNTER_UPDATE (decrements)"]},
+         "note": "down only; a PIN-attempt counter that cannot be reset by the host without re-init rights"},
+        {"name": "Mac-and-Destroy slots", "memory": "R", "attr": "r_macandd_data",
+         "slots": slots_of("CFG_UAP_MAC_AND_DESTROY"), "slot_size": f"{mad_mod.MACANDD_DATA_INPUT_LEN} B",
+         "commands": {"write": [], "read": [], "erase": [], "use": ["MAC_AND_DESTROY (returns the MAC, destroys the slot)"]},
+         "note": "one-shot secrets"},
+        {"name": "Firmware banks", "memory": "R", "attr": "fw_banks", "slots": len(FwBankIdEnum),
+         "slot_size": f"{FW_HEADER_SIZE}-byte header (the model holds headers, not images)",
+         "commands": {"write": ["Mutable_FW_Update (bootloader only; not modelled)"], "read": ["Get_Info(FW_BANK), Start-up mode only"], "erase": []},
+         "note": "two per firmware so an update goes to the inactive bank first"},
+        {"name": "Identity", "memory": "I", "attr": "chip_id, x509_certificate",
+         "slots": 1, "slot_size": f"{CHIP_ID_SIZE} B chip ID; {CERTIFICATE_SIZE} B certificate store",
+         "commands": {"write": [], "read": ["Get_Info(CHIP_ID), Get_Info(X509_CERTIFICATE) - both modes"], "erase": []},
+         "note": "provisioned at the fab; never changes"},
+    ]
+    volatile = [
+        {"name": "Secure session", "attr": "session", "cleared_by": "invalidate_session()"},
+        {"name": "L3 command buffer", "attr": "command_buffer", "cleared_by": "command_buffer.reset()"},
+        {"name": "SPI state machine + response buffer", "attr": "spi_fsm", "cleared_by": "spi_fsm.reset()"},
+        {"name": "Configuration latch (i & r)", "attr": "_config", "cleared_by": "_config = None, re-read at boot"},
+    ]
+    return {"partitions": partitions, "volatile": volatile,
+            "reset_note": "Both reboots clear exactly the volatile list; every partition survives both."}
+
+
 def _build() -> Dict[str, Any]:
     return {
         "provenance": provenance(),
@@ -1467,6 +1858,9 @@ def _build() -> Dict[str, Any]:
         "walkthroughs": call_traces(),
         "wire_traces": wire_traces(),
         "exchanges": exchanges(),
+        "l3_api": l3_api(),
+        "l3_exchanges": l3_exchanges(),
+        "memory": memory_map(),
         "examples": repo_examples(
             pathlib.Path(inspect.getfile(__import__("tvl"))).parent.parent
         ),
@@ -1518,7 +1912,8 @@ def main() -> int:
         f"{len(spec['boot_transitions'])} boot transitions, "
         f"{len(spec['walkthroughs']['scenarios'])} walkthroughs, "
         f"{len(spec['wire_traces'])} traces, "
-        f"{len(spec['exchanges'])} exchanges"
+        f"{len(spec['exchanges'])} exchanges, "
+        f"{len(spec['l3_api'])} L3 commands, {len(spec['l3_exchanges'])} L3 exchanges"
     )
     return 0
 

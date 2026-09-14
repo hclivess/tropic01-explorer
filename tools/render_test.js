@@ -90,6 +90,16 @@ async function run() {
   atLeast("wire traces", spec.wire_traces.length, 1);
   atLeast("CHIP_STATUS flags", spec.chip_status_flags.length, 1);
   atLeast("FW header fields", spec.fw_banks.fields.length, 1);
+  // L3: the whole command set, every one with a handler and a gate, every one sent
+  atLeast("L3 commands", (spec.l3_api || []).length, 20);
+  check("every L3 command has a handler and a UAP gate",
+    (spec.l3_api || []).filter((c) => c.handler && c.uap.length).length, (spec.l3_api || []).length);
+  atLeast("L3 exchanges", (spec.l3_exchanges || []).length, (spec.l3_api || []).length);
+  check("every L3 exchange has a named result", (spec.l3_exchanges || []).filter((e) => e.result_name).length, (spec.l3_exchanges || []).length);
+  check("every L3 command id was exercised",
+    new Set((spec.l3_exchanges || []).map((e) => e.command_id)).size, (spec.l3_api || []).length);
+  atLeast("memory partitions", ((spec.memory || {}).partitions || []).length, 5);
+  check("every L2 exchange carries its SPI transactions", spec.exchanges.filter((e) => e.transactions && e.transactions.length).length, spec.exchanges.length);
   console.log();
 
   check("script errors", errors.length, 0);
@@ -182,7 +192,7 @@ async function run() {
   const pick = d.getElementById("try-pick");
   check("request dropdown populated",
     pick.querySelectorAll("option").length,
-    new Set(spec.exchanges.map((e) => e.group + " · " + e.label)).size);
+    new Set([...spec.exchanges, ...(spec.l3_exchanges || [])].map((e) => e.group + " · " + e.label)).size);
   check("dropdown is grouped", pick.querySelectorAll("optgroup").length > 1, true);
 
   // drive it: choose the request whose answer differs most between modes
@@ -424,6 +434,26 @@ async function run() {
     d.querySelectorAll("#boot-status-note button.linkish").length === 1, true);
 
   check("six tabs", n("#tabs button"), 6);
+  check("L3 table rows", n("#t-l3 tbody tr"), spec.l3_api.length);
+  check("memory partition rows", n("#t-mem tbody tr"), spec.memory.partitions.length);
+  check("volatile rows", n("#t-volatile tbody tr"), spec.memory.volatile.length);
+  check("L3 detail shows fields", d.getElementById("l3-detail").textContent.includes("CMD_ID"), true);
+  // Try it renders an L3 exchange with its plaintext, carrier and SPI transactions
+  {
+    const l3 = spec.l3_exchanges[0]; const key = l3.group + " · " + l3.label;
+    const appBtn = [...d.querySelectorAll("#try-mode button")].find((b) => b.textContent === "APPLICATION"); appBtn.click();
+    const pick = d.getElementById("try-pick"); pick.value = key; pick.dispatchEvent(new dom.window.Event("change"));
+    check("L3 option selectable", pick.value, key);
+    check("L3 pane rendered", n("#try-main.l3pane"), 1);
+    check("L3 pane shows the plaintext command", d.querySelector("#try-main").textContent.includes(l3.repr_command.slice(0, 20)), true);
+    check("L3 pane shows its SPI transactions", n("#try-main .txn tbody tr"), l3.transactions.length);
+    check("Start-up side explains why L3 is unreachable", d.querySelector("#try-other").textContent.includes("UNKNOWN_REQ"), true);
+    const sc = spec.walkthroughs.scenarios.find((x) => x.mode === "APPLICATION" && x.group + " · " + x.label === key);
+    check("trace follows the L3 exchange", n("#walk-steps .wstep"), sc.steps.length);
+    const l2 = spec.exchanges.find((e) => e.mode === "APPLICATION");
+    pick.value = l2.group + " · " + l2.label; pick.dispatchEvent(new dom.window.Event("change"));
+    check("L2 pane shows its SPI transactions", n("#try-main .txn tbody tr"), l2.transactions.length);
+  }
   // The LIVE badge once painted while hidden: .tag's display beat the UA
   // [hidden] rule. Check the computed style, not the attribute.
   check("hidden elements do not paint",
