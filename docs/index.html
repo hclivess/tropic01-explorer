@@ -35,7 +35,7 @@ nav button {
 nav button:hover { color: var(--ink); border-color: var(--edge2); }
 nav button[aria-selected="true"] { color: var(--bg); background: var(--ink); border-color: var(--ink); }
 
-section[hidden] { display: none; }
+[hidden] { display: none !important; }
 h2 { font-size: 14px; margin: 26px 0 10px; font-weight: 600; letter-spacing: .03em; }
 h2:first-child { margin-top: 0; }
 p.note { color: var(--dim); font-size: 12.5px; max-width: 78ch; margin: 0 0 14px; }
@@ -160,6 +160,7 @@ tr.open td { background: #1b222b; }
 footer { margin-top: 34px; padding-top: 14px; border-top: 1px solid var(--edge); color: var(--faint); font-size: 11.5px; }
 code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12px; }
   .walk { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start }
+  #walk-speed { width:auto; padding:6px 8px }
   .walk-steps { position:relative; flex:1 1 380px; max-height:520px; overflow:auto; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12.5px }
   .walk-src { position:relative; flex:1 1 380px; max-height:520px; overflow:auto }
   .walk-src .src { max-height:none; overflow:visible }
@@ -308,10 +309,11 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
       </div>
     </div>
   </div>
-  <div class="panel" id="live-hint" hidden>
-    <div class="sub">
-      These are captured bytes. To send them to a model running right now — and
-      to power it on and off — start the bridge and reload:
+  <details class="panel" id="live-hint" hidden>
+    <summary class="sub">These are captured bytes. To send them to a model running right now, start the bridge…</summary>
+    <div class="sub" style="margin-top:8px">
+      Start it and reload; the page then grows a <b>send this request for real</b>
+      button and a power toggle:
     </div>
     <div class="out" style="margin-top:8px">python3 -m venv .venv &amp;&amp; .venv/bin/pip install -e /path/to/ts-tvl
 PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div>
@@ -320,7 +322,7 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
       <code>http://127.0.0.1:8800</code>: the bridge permits this origin, and
       browsers exempt loopback from mixed-content blocking.
     </div>
-  </div>
+  </details>
   <div class="panel" id="live-panel" hidden>
     <div class="pane-h">
       <span class="who">Live model attached</span>
@@ -365,7 +367,7 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
             <option value="700" selected>medium · 0.7 s</option>
             <option value="250">fast · 0.25 s</option>
           </select>
-          <button id="walk-run" title="run to the end">run to end ⏭</button>
+          <button id="walk-run" title="run to the end">run to end »</button>
         </div>
       </div>
     </div>
@@ -1209,7 +1211,7 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
   function buildWalk() {
     const sc = WK.scenarios[walk.key]; const box = $("walk-steps"); box.innerHTML = "";
     if (!sc) { $("walk-note").textContent = "no trace captured for this request in this mode"; $("walk-pos").textContent = ""; $("walk-src").innerHTML = ""; return; }
-    $("walk-note").textContent = sc.note + "   ·   " + sc.request_class + " in " + sc.mode + " → mode after: " + sc.mode_after;
+    $("walk-note").textContent = (sc.note ? sc.note + "   ·   " : "") + sc.request_class + " in " + sc.mode + " → mode after: " + sc.mode_after;
     sc.steps.forEach((st, i) => {
       const row = el("div", { className: "wstep" + (st.event === "return" ? " ret" : "") });
       row.style.paddingLeft = (6 + (st.depth - 1) * 14) + "px";

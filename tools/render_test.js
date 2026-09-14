@@ -424,6 +424,10 @@ async function run() {
     d.querySelectorAll("#boot-status-note button.linkish").length === 1, true);
 
   check("six tabs", n("#tabs button"), 6);
+  // The LIVE badge once painted while hidden: .tag's display beat the UA
+  // [hidden] rule. Check the computed style, not the attribute.
+  check("hidden elements do not paint",
+    dom.window.getComputedStyle(d.getElementById("live-badge")).display, "none");
   check("how-it-works is a collapsible under the header", !!d.querySelector("header details#about-box #about"), true);
   check("errors after interaction", errors.length, 0);
 
