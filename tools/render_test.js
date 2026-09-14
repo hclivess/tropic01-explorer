@@ -433,6 +433,17 @@ async function run() {
     d.getElementById("boot-status-note").textContent.includes("UNKNOWN_REQ") &&
     d.querySelectorAll("#boot-status-note button.linkish").length === 1, true);
 
+  // CHIP_STATUS: the bits table, and READY=0 actually captured on the wire
+  check("CHIP_STATUS bit rows", n("#t-chipstatus tbody tr"), spec.chip_status_flags.length);
+  {
+    const polls = spec.chip_status_states.busy.transactions.filter((t) => t.kind === "poll");
+    atLeast("polls under a busy chip", polls.length, 2);
+    check("first poll sees READY=0", polls[0].chip_status & 1, 0);
+    check("last poll sees READY=1", polls[polls.length - 1].chip_status & 1, 1);
+    check("busy capture rendered", n("#busy-capture .txn tbody tr"), spec.chip_status_states.busy.transactions.length);
+    check("Start-up capture shows START", spec.chip_status_states.start_up.transactions[0].chip_status & 4, 4);
+    check("ALARM marked as never set", [...d.querySelectorAll("#t-chipstatus tbody tr")].some((tr) => tr.textContent.includes("ALARM") && tr.textContent.includes("never set")), true);
+  }
   check("six tabs", n("#tabs button"), 6);
   check("L3 table rows", n("#t-l3 tbody tr"), spec.l3_api.length);
   check("memory partition rows", n("#t-mem tbody tr"), spec.memory.partitions.length);

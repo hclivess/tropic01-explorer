@@ -178,7 +178,64 @@ def boot_targets() -> List[Dict[str, Any]]:
 
 
 def chip_status_flags() -> List[Dict[str, Any]]:
-    return [{"name": f.name, "value": int(f.value)} for f in L1ChipStatusFlag]
+    """The four CHIP_STATUS bits, with their docstrings and whether anything in
+    the model can set them - read off the code, not asserted."""
+    import tvl.constants as constants_mod
+    docs = attribute_docs(constants_mod).get("L1ChipStatusFlag", {})
+    from tvl.targets.model.internal import spi_fsm as spi_fsm_mod
+    src = pathlib.Path(inspect.getfile(spi_fsm_mod)).read_text() + pathlib.Path(inspect.getfile(ChipMode)).read_text()
+    how = {
+        "READY": "the SPI FSM sets it from busy_iter: every False is READY=1, every True is READY=0 and the host polls again",
+        "START": "ChipMode.chip_status_flags: set while the chip is in Start-up mode",
+        "ALARM": "nothing in ts-tvl sets it - Alarm mode is not modelled",
+        "BOOT_HOLD": "nothing in ts-tvl sets it",
+    }
+    return [{"name": f.name, "value": int(f.value), "doc": docs.get(f.name, ""),
+             "modelled": (f.name in src) and f.name not in ("ALARM", "BOOT_HOLD"),
+             "how": how.get(f.name, "")} for f in L1ChipStatusFlag]
+
+
+def chip_status_states() -> Dict[str, Any]:
+    """CHIP_STATUS as the host actually meets it.
+
+    READY=0 is answered only when the host polls and nothing is pending
+    (`csn_falling_edge_state`: a queued response is always served first), i.e.
+    the datasheet 6.1 case - after power-up, before the chip is ready. So the
+    capture is a fresh chip built with `busy_iter=[True, True, False]`, polled
+    three times with nothing sent: READY=0, READY=0, then READY=1 (and NO_RESP,
+    because there is nothing to fetch). Then a real request in Start-up mode,
+    so START rides with READY on every transaction.
+    """
+    from tvl.api.l2_api import TsL2GetInfoRequest as GI
+    out: Dict[str, Any] = {}
+    host_pub, tropic_pub = _x25519_pub(_HOST_PRIV), _x25519_pub(_TROPIC_PRIV)
+
+    def chip(mode: ChipMode, busy: List[bool]) -> Tuple[Tropic01Model, Host]:
+        model = Tropic01Model(debug_random_value=bytes(4), busy_iter=busy,
+                              s_t_priv=_TROPIC_PRIV, s_t_pub=tropic_pub)
+        model.i_pairing_keys[0].write(host_pub)
+        model.power_on()
+        if mode is ChipMode.START_UP:
+            model.reboot(BootTarget.START_UP)
+        host = Host(s_h_priv=[_HOST_PRIV], s_h_pub=[host_pub], s_t_pub=tropic_pub,
+                    pairing_key_index=0, debug_random_value=bytes(4)).set_target(model)
+        return model, host
+
+    busy = [True, True, False]
+    model, _ = chip(ChipMode.APPLICATION, busy)
+    with spi_capture(model) as transactions:
+        for _ in range(len(busy)):
+            read_chip_status(model)
+    out["busy"] = {"mode": ChipMode.APPLICATION.name, "busy_iter": busy, "request": None,
+                   "response": None, "transactions": transactions}
+
+    model, host = chip(ChipMode.START_UP, [False])
+    request = GI(object_id=GI.ObjectIdEnum.CHIP_ID, block_index=0)
+    with spi_capture(model) as transactions:
+        response = bytes(host.send_request(request.to_bytes()))
+    out["start_up"] = {"mode": ChipMode.START_UP.name, "busy_iter": [False], "request": request.to_bytes().hex(),
+                       "response": response.hex(), "transactions": transactions}
+    return out
 
 
 def l2_status_codes() -> List[Dict[str, Any]]:
@@ -1839,6 +1896,7 @@ def _build() -> Dict[str, Any]:
         "chip_modes": chip_modes(),
         "boot_targets": boot_targets(),
         "chip_status_flags": chip_status_flags(),
+        "chip_status_states": chip_status_states(),
         "l2_status_codes": l2_status_codes(),
         "co_registers": co_registers(),
         "co_address_space": {

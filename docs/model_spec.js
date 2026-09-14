@@ -226,22 +226,88 @@ window.MODEL_SPEC = {
  ],
  "chip_status_flags": [
   {
+   "doc": "TROPIC01 is ready to receive L2 Request frame or L3 Command packet",
+   "how": "the SPI FSM sets it from busy_iter: every False is READY=1, every True is READY=0 and the host polls again",
+   "modelled": true,
    "name": "READY",
    "value": 1
   },
   {
+   "doc": "TROPIC01 is in Alarm mode",
+   "how": "nothing in ts-tvl sets it - Alarm mode is not modelled",
+   "modelled": false,
    "name": "ALARM",
    "value": 2
   },
   {
+   "doc": "TROPIC01 is in Start-up mode",
+   "how": "ChipMode.chip_status_flags: set while the chip is in Start-up mode",
+   "modelled": true,
    "name": "START",
    "value": 4
   },
   {
+   "doc": "TROPIC01 is in boot hold mode",
+   "how": "nothing in ts-tvl sets it",
+   "modelled": false,
    "name": "BOOT_HOLD",
    "value": 8
   }
  ],
+ "chip_status_states": {
+  "busy": {
+   "busy_iter": [
+    true,
+    true,
+    false
+   ],
+   "mode": "APPLICATION",
+   "request": null,
+   "response": null,
+   "transactions": [
+    {
+     "chip_status": 0,
+     "kind": "poll",
+     "miso": "00",
+     "mosi": "aa"
+    },
+    {
+     "chip_status": 0,
+     "kind": "poll",
+     "miso": "00",
+     "mosi": "aa"
+    },
+    {
+     "chip_status": 1,
+     "kind": "poll",
+     "miso": "01",
+     "mosi": "aa"
+    }
+   ]
+  },
+  "start_up": {
+   "busy_iter": [
+    false
+   ],
+   "mode": "START_UP",
+   "request": "010201002b92",
+   "response": "0180636869705f6964000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005855",
+   "transactions": [
+    {
+     "chip_status": 5,
+     "kind": "send",
+     "miso": "050000000000",
+     "mosi": "010201002b92"
+    },
+    {
+     "chip_status": 5,
+     "kind": "poll",
+     "miso": "050180636869705f6964000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005855",
+     "mosi": "aa000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    }
+   ]
+  }
+ },
  "co_address_space": {
   "application_base": 20,
   "configuration_half": [

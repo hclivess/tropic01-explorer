@@ -227,6 +227,17 @@ code { background: #1d242d; padding: 1px 5px; border-radius: 3px; font-size: 12p
   <h2>The captured table</h2>
   <div class="panel scroll"><div id="t-boot"></div></div>
   <p class="note" id="boot-status-note"></p>
+  <h2>The CHIP_STATUS byte</h2>
+  <p class="note">
+    The first byte the chip shifts out on every transaction. libtropic reads
+    the mode from it and nothing else. Which bits this model can actually set
+    is read off the code; the captures below are the host meeting each one.
+  </p>
+  <div class="panel scroll"><div id="t-chipstatus"></div></div>
+  <p class="note" id="busy-note"></p>
+  <div class="panel" id="busy-capture"></div>
+  <p class="note" id="startup-status-note"></p>
+  <div class="panel" id="startup-status-capture"></div>
 </section>
 
 <section id="tab-co" hidden>
@@ -729,6 +740,34 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
     n.append(", for instance.");
   }
   renderBoot();
+
+  // The CHIP_STATUS bits: meaning, whether the model can produce them, and
+  // two captures - READY=0 under a busy chip, START=1 in Start-up mode.
+  {
+    put("t-chipstatus", table(["bit", "value", "meaning", "in this model"],
+      S.chip_status_flags.map((f) => [
+        el("code", { textContent: "CHIP_STATUS[" + f.name + "]" }), hex(f.value),
+        el("span", { className: "doc", textContent: f.doc || "—" }),
+        el("span", {}, [tag(f.modelled ? "app" : "no", f.modelled ? "modelled" : "never set"), document.createTextNode("  " + f.how)]),
+      ])));
+    const CS = S.chip_status_states || {};
+    const flagsOf = (b) => S.chip_status_flags.filter((f) => b & f.value).map((f) => f.name).join("+") || "0";
+    if (CS.busy) {
+      const polls = CS.busy.transactions.filter((t) => t.kind === "poll");
+      $("busy-note").textContent = "READY = 0, captured: a fresh chip built with busy_iter = [" + CS.busy.busy_iter.join(", ") +
+        "], polled with GET_RESP before anything was sent - the datasheet 6.1 case, after power-up and before the chip is ready. " +
+        polls.length + " polls: " + polls.map((t) => hex(t.chip_status) + " " + flagsOf(t.chip_status)).join(" → ") +
+        ". The FSM clears READY only on a poll with nothing pending; a queued response is always served first.";
+      renderTransactions($("busy-capture"), CS.busy.transactions);
+      $("busy-capture").querySelector("details").open = true;
+    }
+    if (CS.start_up) {
+      $("startup-status-note").textContent = "START = 1, captured: the same Get_Info in Start-up mode - every CHIP_STATUS is " +
+        hex(CS.start_up.transactions[0].chip_status) + " " + flagsOf(CS.start_up.transactions[0].chip_status) + ", which is what lt_get_tr01_mode() reads.";
+      renderTransactions($("startup-status-capture"), CS.start_up.transactions);
+      $("startup-status-capture").querySelector("details").open = true;
+    }
+  }
 
   /* ================= CONFIGURATION OBJECT ================= */
   const A = S.co_address_space;

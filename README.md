@@ -77,6 +77,8 @@ the cursor lights up at the executing line. Only the model's own files are
 traced — the pydantic and protocol plumbing is filtered out, or the reboot
 scenario would be four hundred steps of register reads.
 
+**CHIP_STATUS.** The Boot tab lists the four bits with their docstrings and whether the model can set them (READY and START yes; ALARM and BOOT_HOLD are flags nothing sets), and captures READY = 0 for real by building a chip with `busy_iter=[True, True, False]` and letting the host poll.
+
 **Deep links.** `#try:<MODE>:<request>` opens Try it on that exchange in that mode — e.g. [`#try:START_UP:Ping · loopback 5 bytes`](https://hclivess.github.io/tropic01-explorer/#try:START_UP:Ping%20%C2%B7%20loopback%205%20bytes) — so a note can point at a fact instead of describing clicks.
 
 **All layers.** The same list carries **L3**: every one of the 23 commands sent
