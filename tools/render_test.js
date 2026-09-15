@@ -455,6 +455,20 @@ async function run() {
     check("Get_Info pane names OBJECT_ID and BLOCK_INDEX", subs.some((t) => t.includes("OBJECT_ID")) && subs.some((t) => t.includes("BLOCK_INDEX")), true);
   }
   check("all-exchanges table lists every exchange", n("#t-all tbody tr"), spec.exchanges.length + spec.l3_exchanges.length);
+  // the tour is captured as structure, not as terminal text
+  atLeast("tour steps", ((spec.tour || {}).steps || []).length, 10);
+  {
+    const segs = spec.tour.steps.flatMap((s) => s.segments);
+    atLeast("tour exchanges with raw bytes", segs.filter((g) => g.kind === "exchange" && g.sent && g.got).length, 8);
+    atLeast("tour source excerpts", segs.filter((g) => g.kind === "source" && g.lines.length).length, 8);
+    atLeast("tour notes", segs.filter((g) => g.kind === "note").length, 5);
+    check("tour steps rendered", n("#tour .tourstep"), spec.tour.steps.length);
+    check("first tour step open", d.querySelector("#tour .tourstep").open, true);
+    atLeast("tour exchanges rendered as decoded frames", n("#tour .tourstep .frame"), 8);
+    atLeast("tour source panes rendered", n("#tour .tourstep .srcline.cur"), 8);
+    d.getElementById("tour-next").click();
+    check("next opens the second step", [...d.querySelectorAll("#tour .tourstep")].findIndex((x) => x.open), 1);
+  }
   check("six tabs", n("#tabs button"), 6);
   check("L3 table rows", n("#t-l3 tbody tr"), spec.l3_api.length);
   check("memory partition rows", n("#t-mem tbody tr"), spec.memory.partitions.length);

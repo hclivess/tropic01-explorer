@@ -38,7 +38,7 @@ reimplementation of the state machine to disagree with the Python one.
 Likewise the wire traces are bytes a real model really emitted, captured by
 driving a real `Host` against a real `Tropic01Model`.
 
-The **Examples** tab runs ts-tvl's own `examples/` scripts unmodified and shows,
+The **Examples** tab opens with the guided tour — `tools/tour.py`, sixteen narrated steps that send real bytes and take the replies apart, executed under pinned entropy so the capture reproduces — and then runs ts-tvl's own `examples/` scripts unmodified and shows,
 for each: its source, its `stdout`, and **its full log stream** — 43 to 236 lines
 per script of the model and host narrating the protocol to each other. Every one
 of the four calls `setup_logging()`, so every one has a log; showing only what a

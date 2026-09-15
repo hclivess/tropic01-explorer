@@ -114,6 +114,9 @@ td.doc { color: var(--dim); font-size: 12px; }
 .fld.status { border-color: var(--accent); }
 .fld.data { border-color: var(--wire); }
 .fld.sub { border-style: dashed; color: var(--dim); }
+.tourstep { border-left: 2px solid var(--edge2); padding-left: 10px; margin: 6px 0; }
+.tourstep[open] { border-left-color: var(--accent); }
+.tourstep summary { cursor: pointer; padding: 4px 0; }
 .dir { color: var(--faint); width: 1.4em; display: inline-block; }
 .ascii { color: var(--accent); }
 
@@ -430,6 +433,23 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
 </section>
 
 <section id="tab-examples" hidden>
+  <h2>The guided tour, executed</h2>
+  <p class="note">
+    <code>tools/tour.py</code> — sixteen steps that send real bytes to the model
+    and take each reply apart, written for someone clever who is not an
+    embedded engineer. Run here under pinned entropy and captured: the prose,
+    the bytes, the decoded replies, and "the real code that just ran", read off
+    the checkout at run time. Steps 0–10 are the chip-mode feature; 11–15 are
+    the parts it did not touch.
+  </p>
+  <div class="panel">
+    <div class="act" style="margin-bottom:8px">
+      <button id="tour-prev" title="previous step">◀ back</button>
+      <button id="tour-next" title="next step">next ▶</button>
+      <button id="tour-all" title="expand every step">open all</button>
+    </div>
+    <div id="tour"></div>
+  </div>
   <h2>The repository's own examples, executed</h2>
   <p class="note">
     These are the scripts in ts-tvl's <code>examples/</code> directory, run
@@ -1477,6 +1497,70 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
   $("walk-back").onclick = () => { stopPlay(); walk.i = Math.max(walk.i - 1, 0); renderWalk(); };
   $("walk-run").onclick = () => { stopPlay(); walk.i = last(); renderWalk(); };
   syncWalk();
+
+  /* ================= TOUR ================= */
+  // The tour re-rendered in this page's own vocabulary: prose as prose, an
+  // exchange as the same decoded frames Try it shows, CHIP_STATUS as bits,
+  // "the real code that just ran" as a source pane.
+  {
+    const T = S.tour || { steps: [] };
+    const box = $("tour"); let cur = 0;
+    const reqClass = (hexstr) => {
+      const r = S.l2_requests.find((x) => x.id === parseInt(hexstr.slice(0, 2), 16));
+      return r ? "TsL2" + r.name.toLowerCase().split("_").map((w) => w[0].toUpperCase() + w.slice(1)).join("") + "Request" : "";
+    };
+    const flagsOf = (b) => S.chip_status_flags.filter((f) => b & f.value).map((f) => f.name).join("+") || "none set";
+    const proseNode = (text) => {
+      const frag = document.createDocumentFragment();
+      text.split(/\n\s*\n/).forEach((para) => {
+        const lines = para.split("\n");
+        const listy = lines.length > 1 && lines.every((l) => /^\s{2,}/.test(l) || !l.trim());
+        if (listy || /^\s{3,}\S/.test(para)) frag.append(el("div", { className: "out", style: "white-space:pre-wrap; max-height:none; margin:6px 0", textContent: para.replace(/^\s{3}/gm, "") }));
+        else frag.append(el("p", { className: "note", style: "margin:6px 0", textContent: lines.map((l) => l.trim()).join(" ") }));
+      });
+      return frag;
+    };
+    const secs = T.steps.map((st, i) => {
+      const d = el("details", { className: "tourstep" });
+      const srcs = st.segments.filter((g) => g.kind === "source").map((g) => g.file.split("/").pop() + ":" + g.line);
+      d.append(el("summary", {}, [el("strong", { textContent: st.n + ". " + st.title }),
+        el("span", { className: "sub", textContent: srcs.length ? "   · " + srcs.join(", ") : "" })]));
+      if (st.explain) d.append(proseNode(st.explain));
+      st.segments.forEach((g) => {
+        if (g.kind === "prose") d.append(proseNode(g.text));
+        else if (g.kind === "note") d.append(el("div", { className: "decoded", style: "white-space:pre-wrap", textContent: g.text.replace(/^\s{2}/gm, "") }));
+        else if (g.kind === "status") d.append(el("div", { className: "sub" }, [
+          document.createTextNode((g.prefix ? g.prefix + " " : "") + "CHIP_STATUS "), tag(g.value & 4 ? "boot" : "app", hex(g.value) + " " + flagsOf(g.value)),
+          document.createTextNode("  → the host reads this as " + g.mode)]));
+        else if (g.kind === "exchange") {
+          const w = el("div", { className: "call" });
+          renderFrames(w, g.sent, g.got, reqClass(g.sent));
+          const stb = parseInt(g.got.slice(0, 2), 16);
+          w.append(el("div", { className: "sub" }, [document.createTextNode("STATUS "), tag(stb === 1 ? "app" : stb === 0x7e ? "no" : "hot", hex(stb) + " " + (statusName[stb] || "?")),
+            document.createTextNode("   ·   CHIP_STATUS on the poll "), tag(g.chip_status & 4 ? "boot" : "app", hex(g.chip_status) + " " + flagsOf(g.chip_status))]));
+          d.append(w);
+        }
+        else if (g.kind === "source") {
+          const w = el("div", { className: "walk-src", style: "max-height:none; margin:8px 0" });
+          w.append(el("div", { className: "sub" }, [el("strong", { textContent: "the real code that just ran" }), document.createTextNode("  " + g.file + ":" + g.line + (g.why ? "  —  " + g.why : ""))]));
+          const pane = el("div", { className: "src" });
+          g.lines.forEach((line, k) => {
+            const row = el("div", { className: "srcline" + (k === 0 ? " cur" : "") });
+            row.append(el("span", { className: "ln", textContent: String(g.line + k) }));
+            row.append(pythonise(line)); pane.append(row);
+          });
+          w.append(pane); d.append(w);
+        }
+      });
+      d.addEventListener("toggle", () => { if (d.open) cur = i; });
+      box.append(d); return d;
+    });
+    const show = (i) => { cur = Math.max(0, Math.min(i, secs.length - 1)); secs.forEach((d, k) => { d.open = k === cur; }); if (secs[cur].scrollIntoView) secs[cur].scrollIntoView({ block: "start" }); };
+    $("tour-next").onclick = () => show(cur + 1);
+    $("tour-prev").onclick = () => show(cur - 1);
+    $("tour-all").onclick = () => secs.forEach((d) => { d.open = true; });
+    if (secs.length) secs[0].open = true;
+  }
 
   /* ================= EXAMPLES ================= */
   // Minimal Python colouring. Cosmetic only - it never changes a byte, and it

@@ -30,7 +30,9 @@ import hashlib
 import inspect
 import itertools
 import json
+import os
 import pathlib
+import random
 import re
 import subprocess
 import sys
@@ -49,6 +51,8 @@ from tvl.api.l2_api import (
     TsL2SleepRequest,
     TsL2StartupRequest,
 )
+from cryptography.hazmat.primitives.asymmetric import x25519
+
 from tvl.api import l2_api as l2_api_mod
 from tvl.api import l3_api as l3_mod
 from tvl.api.l3_api import L3Enum
@@ -1064,6 +1068,106 @@ def call_traces() -> Dict[str, Any]:
     return {"scenarios": scenarios, "sources": sources}
 
 
+@contextlib.contextmanager
+def pinned_entropy():
+    """Make the examples reproducible instead of masking what moved.
+
+    The secure-channel examples build ephemeral X25519 keys, so their bytes
+    differ every run. Masking the difference is honest but useless - the page
+    ends up showing dots where the interesting part is. Pinning the entropy
+    instead gives real bytes, real output, and a capture that reproduces.
+
+    This replaces the *source of randomness* for the duration of the
+    capture. It does not touch the examples, the protocol, or the model.
+    """
+    counter = itertools.count()
+
+    def stream(n: int) -> bytes:
+        out = b""
+        while len(out) < n:
+            out += hashlib.sha256(
+                b"tropic01-explorer/" + str(next(counter)).encode()
+            ).digest()
+        return out[:n]
+
+    real_urandom, real_generate = os.urandom, x25519.X25519PrivateKey.generate
+    real_state = random.getstate()
+    os.urandom = stream  # type: ignore[assignment]
+    x25519.X25519PrivateKey.generate = staticmethod(  # type: ignore[assignment]
+        lambda: x25519.X25519PrivateKey.from_private_bytes(stream(32))
+    )
+    # example_04 does `os.urandom(randint(1, 32))`, so the *length* of a
+    # payload comes from Python's own RNG, not the OS one. Seeding both is
+    # what turns "output varies between runs" into a real capture.
+    random.seed(0)
+    try:
+        yield
+    finally:
+        os.urandom = real_urandom  # type: ignore[assignment]
+        x25519.X25519PrivateKey.generate = real_generate  # type: ignore[assignment]
+        random.setstate(real_state)
+
+
+ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def tour(ts_tvl: pathlib.Path) -> Dict[str, Any]:
+    """tools/tour.py - the guided tour - executed under pinned entropy and
+    captured as structure: per step, the prose in order with the exchanges
+    (raw bytes), CHIP_STATUS reads, notes and 'the real code that just ran'
+    (read off the checkout) as their own segments. The tour records those as
+    EVENTS with stdout positions; the text between events is the prose."""
+    import io
+    import runpy
+    path = pathlib.Path(__file__).with_name("tour.py")
+    out = io.StringIO()
+    old_argv, old_env = sys.argv, os.environ.get("TSTVL")
+    os.environ["TSTVL"] = str(ts_tvl)
+    sys.argv = ["tour.py", "--fast"]
+    try:
+        with pinned_entropy(), contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            g = runpy.run_path(str(path), run_name="__main__")
+    finally:
+        sys.argv = old_argv
+        if old_env is None:
+            os.environ.pop("TSTVL", None)
+        else:
+            os.environ["TSTVL"] = old_env
+    raw = out.getvalue()
+    events = g["EVENTS"]
+
+    def prose(a: int, b: int) -> Optional[Dict[str, Any]]:
+        t = ANSI.sub("", raw[a:b]).strip("\n")
+        t = "\n".join(l.rstrip() for l in t.split("\n"))
+        return {"kind": "prose", "text": t.strip("\n")} if t.strip() else None
+
+    steps: List[Dict[str, Any]] = []
+    cur: Optional[Dict[str, Any]] = None
+    pos = 0
+    for ev in events:
+        at, end = ev["at"], ev["end"]
+        if ev["kind"] == "step":
+            if cur is not None:
+                seg = prose(pos, at)
+                if seg: cur["segments"].append(seg)
+            cur = {"n": ev["n"], "title": ev["title"], "explain": ev["explain"], "segments": []}
+            steps.append(cur); pos = end; continue
+        assert cur is not None
+        seg = prose(pos, at)
+        if seg: cur["segments"].append(seg)
+        item = {k: v for k, v in ev.items() if k not in ("at", "end")}
+        cur["segments"].append(item)
+        pos = end
+    if cur is not None:
+        seg = prose(pos, len(raw))
+        if seg: cur["segments"].append(seg)
+    kinds = [sg["kind"] for st in steps for sg in st["segments"]]
+    if len(steps) < 10 or kinds.count("exchange") < 8 or kinds.count("source") < 8:
+        raise SystemExit(f"tour capture looks broken: {len(steps)} steps, "
+                         f"{kinds.count('exchange')} exchanges, {kinds.count('source')} sources")
+    return {"steps": steps, "source_path": "tools/tour.py"}
+
+
 def repo_examples(ts_tvl: pathlib.Path) -> List[Dict[str, Any]]:
     """Run ts-tvl's own example scripts and record what they did.
 
@@ -1097,45 +1201,6 @@ def repo_examples(ts_tvl: pathlib.Path) -> List[Dict[str, Any]]:
     import runpy
 
     from cryptography.hazmat.primitives.asymmetric import x25519
-
-    @contextlib.contextmanager
-    def pinned_entropy():
-        """Make the examples reproducible instead of masking what moved.
-
-        The secure-channel examples build ephemeral X25519 keys, so their bytes
-        differ every run. Masking the difference is honest but useless - the page
-        ends up showing dots where the interesting part is. Pinning the entropy
-        instead gives real bytes, real output, and a capture that reproduces.
-
-        This replaces the *source of randomness* for the duration of the
-        capture. It does not touch the examples, the protocol, or the model.
-        """
-        counter = itertools.count()
-
-        def stream(n: int) -> bytes:
-            out = b""
-            while len(out) < n:
-                out += hashlib.sha256(
-                    b"tropic01-explorer/" + str(next(counter)).encode()
-                ).digest()
-            return out[:n]
-
-        real_urandom, real_generate = os.urandom, x25519.X25519PrivateKey.generate
-        real_state = random.getstate()
-        os.urandom = stream  # type: ignore[assignment]
-        x25519.X25519PrivateKey.generate = staticmethod(  # type: ignore[assignment]
-            lambda: x25519.X25519PrivateKey.from_private_bytes(stream(32))
-        )
-        # example_04 does `os.urandom(randint(1, 32))`, so the *length* of a
-        # payload comes from Python's own RNG, not the OS one. Seeding both is
-        # what turns "output varies between runs" into a real capture.
-        random.seed(0)
-        try:
-            yield
-        finally:
-            os.urandom = real_urandom  # type: ignore[assignment]
-            x25519.X25519PrivateKey.generate = real_generate  # type: ignore[assignment]
-            random.setstate(real_state)
 
     directory = ts_tvl / "examples"
     if not directory.is_dir():
@@ -1947,6 +2012,7 @@ def _build() -> Dict[str, Any]:
         "examples": repo_examples(
             pathlib.Path(inspect.getfile(__import__("tvl"))).parent.parent
         ),
+        "tour": tour(pathlib.Path(inspect.getfile(__import__("tvl"))).parent.parent),
     }
 
 
@@ -1996,7 +2062,8 @@ def main() -> int:
         f"{len(spec['walkthroughs']['scenarios'])} walkthroughs, "
         f"{len(spec['wire_traces'])} traces, "
         f"{len(spec['exchanges'])} exchanges, "
-        f"{len(spec['l3_api'])} L3 commands, {len(spec['l3_exchanges'])} L3 exchanges"
+        f"{len(spec['l3_api'])} L3 commands, {len(spec['l3_exchanges'])} L3 exchanges, "
+        f"{len(spec['tour']['steps'])} tour steps"
     )
     return 0
 

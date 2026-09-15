@@ -6556,6 +6556,605 @@ window.MODEL_SPEC = {
   "ts_tvl_commit": "01db883",
   "ts_tvl_describe": "2.3-56-g01db883"
  },
+ "tour": {
+  "source_path": "tools/tour.py",
+  "steps": [
+   {
+    "explain": "Four ideas, and the rest of this becomes legible.\n\n(a) BYTES AND HEX. All communication is bytes - whole numbers from 0 to 255.\n    They are written in hexadecimal (base 16) and marked with \"0x\": 0x01 is one,\n    0x0A is ten, 0xFF is 255. Two hex digits is always exactly one byte. So\n    \"01 02 02 00 2b 98\" is six bytes.\n\n(b) THE WIRE. Host and chip are joined by a few physical wires, a scheme called\n    SPI. One wire is a metronome supplied by the host; the chip cannot start a\n    conversation, only answer one. The host pulls a \"chip select\" wire low\n    meaning \"I am talking to you now\", trades bytes, then releases it. Call that\n    one EXCHANGE. Bytes travel BOTH WAYS AT ONCE, so to receive anything the\n    host must send filler and look at what comes back in return.\n\n(c) ONE QUESTION TAKES TWO EXCHANGES. The first delivers the question; the chip\n    has not answered yet, so it returns filler. The host then opens a second\n    exchange starting with the byte 0xAA, meaning \"give me the response now\".\n    Remember this - it is why several steps below happen in two beats.\n\n(d) MESSAGE SHAPE.\n        we send:      ID | LENGTH | CONTENT... | CHECKSUM\n        chip replies: CHIP_STATUS | VERDICT | LENGTH | CONTENT... | CHECKSUM\n\n    A CHECKSUM is a short number computed from the message contents. If a bit\n    were corrupted in transit, the receiver's recomputed value would not match\n    and it knows to ask again.\n\n    CHIP_STATUS is special: it is the FIRST byte the chip returns in EVERY\n    exchange, before you have asked anything at all. It is the chip continuously\n    announcing its own state. A byte holds eight binary digits, or \"bits\", and\n    three of them matter here:\n        0x01 READY   ready for a question, or an answer is waiting\n        0x02 ALARM   tampering detected\n        0x04 START   the bootloader is running (explained in the next step)",
+    "n": 0,
+    "segments": [],
+    "title": "How to read everything below"
+   },
+   {
+    "explain": "FIRMWARE is software living inside a device rather than on a computer's disk.\nTROPIC01 carries two separate firmwares:\n\n  - The BOOTLOADER, burned permanently into the chip during manufacture and\n    impossible to change afterwards. It runs first after every restart, and its\n    only jobs are to load the other firmware or to replace it with an update.\n  - The APPLICATION firmware, held in rewritable memory and therefore\n    updatable. This is the one that does the actual security work.\n\nOnly one runs at a time, and whichever it is decides what the chip will answer.\nThe host discovers which from a single bit.",
+    "n": 1,
+    "segments": [
+     {
+      "kind": "status",
+      "mode": "APPLICATION",
+      "prefix": "",
+      "value": 1
+     },
+     {
+      "kind": "prose",
+      "text": "   internally the model calls this: APPLICATION"
+     },
+     {
+      "kind": "note",
+      "text": "START is 0, so the application firmware is in charge.\n\nA vocabulary warning, because three names exist for two things. The chip's\ndatasheet calls the bootloader state \"Start-up mode\". The host library calls it\n\"Maintenance mode\". The assignment brief used both. They are all one single\nstate - there is one START bit and no room for a third possibility."
+     }
+    ],
+    "title": "A fresh chip has booted its application firmware"
+   },
+   {
+    "explain": "\"Get_Info\" is the general-purpose question. It carries an OBJECT_ID naming which\npiece of information you want. Object 0x02 means \"your RISC-V firmware version\"\n- RISC-V being the small general-purpose processor inside the chip.\n\nWatch the CONTENT of the reply. You will send this identical question again\nlater and receive a different answer.",
+    "n": 2,
+    "segments": [
+     {
+      "chip_status": 1,
+      "got": "010400000002eff9",
+      "kind": "exchange",
+      "sent": "010202002b98"
+     },
+     {
+      "kind": "note",
+      "text": "The reply is 00 00 00 02. Read it BACKWARDS: version 2.0.0.\n\nThis convention is called LITTLE-ENDIAN - writing the least significant part\nfirst, as if \"two thousand and thirteen\" were spoken \"thirteen, two-thousand\".\nIt is arbitrary but universal here, and it catches people constantly: a value\nprinted as 0x80000000 in a document appears on the wire as 00 00 00 80, never\n80 00 00 00."
+     }
+    ],
+    "title": "Ask the application firmware which version it is"
+   },
+   {
+    "explain": "The chip keeps its updatable firmware in four BANKS: two for the main processor\nand two for a specialised coprocessor. Two of each, so an update can be written\ninto the spare and only switched over once it is complete and verified. A power\ncut mid-update therefore cannot leave the chip unusable.\n\nObject 0xB0 asks to read a bank's header - its version, size and fingerprint.",
+    "n": 3,
+    "segments": [
+     {
+      "chip_status": 1,
+      "got": "7f000602",
+      "kind": "exchange",
+      "sent": "0102b00124b4"
+     },
+     {
+      "kind": "note",
+      "text": "Turned down, with the verdict \"generic error\".\n\nReading a bank means reading the very memory the running firmware is executing\nfrom - rather like trying to read a page of the book somebody is currently\nreading aloud from. Only the bootloader, which has not yet handed over control,\ncan do it safely.\n\nNote that this is a generic error and NOT \"unknown request\". The QUESTION is\nperfectly valid here; it is this particular OBJECT_ID the running firmware does\nnot serve. That distinction becomes important shortly."
+     }
+    ],
+    "title": "Ask for a firmware bank header - and get turned down"
+   },
+   {
+    "explain": "\"Startup_Req\" restarts the chip. It carries one number saying how:\n    0x01 REBOOT              restart normally, loading the application firmware\n    0x03 MAINTENANCE_REBOOT  restart but STAY in the bootloader\n\nBefore this piece of work the model treated those two identically. That was the\nbug being fixed.\n\nNow a line from the datasheet that is easy to skim past:\n\n    \"TROPIC01 responds to Startup_Req by a regular L2 Response frame.\n     TROPIC01 restarts only after Host MCU reads this L2 Response frame.\"\n\nIn plain English: the chip replies FIRST, and only restarts once you have\nactually collected that reply.",
+    "n": 4,
+    "segments": [
+     {
+      "chip_status": 1,
+      "got": "01000386",
+      "kind": "exchange",
+      "sent": "b30103f60f"
+     },
+     {
+      "kind": "prose",
+      "text": "   internal mode is still: APPLICATION   <- has not restarted!"
+     },
+     {
+      "file": "tvl/targets/model/tropic01_l2_api_impl.py",
+      "kind": "source",
+      "line": 318,
+      "lines": [
+       "    def ts_l2_startup(self, request: TsL2StartupRequest) -> TsL2StartupResponse:",
+       "        request_startup_id = request.startup_id.value",
+       "        try:",
+       "            startup_id = TsL2StartupRequest.StartupIdEnum(request_startup_id)",
+       "        except ValueError:",
+       "            raise L2ProcessingErrorGeneric(",
+       "                f\"Unexpected value: {request_startup_id}.\"",
+       "            ) from None",
+       "        self.logger.debug(\"startup_id = %s\", startup_id)",
+       "        target = _STARTUP_ID_BOOT_TARGETS[startup_id]",
+       "",
+       "        # The firmware refuses from the handler and does not restart",
+       "        # (ts-tr01-app/main/ts_l2.c, MAINTENANCE_ENA check).",
+       "        if target is BootTarget.START_UP and not self._maintenance_allowed():",
+       "            return TsL2StartupResponse(status=L2StatusEnum.RESP_DISABLED)",
+       "",
+       "        # Answer now; the reset runs once the host has read it (datasheet 6.6).",
+       "        self.schedule_reboot(target)",
+       "        return TsL2StartupResponse(status=L2StatusEnum.REQ_OK)",
+       "",
+       "    def ts_l2_get_log(self, request: TsL2GetLogRequest) -> TsL2GetLogResponse:",
+       "        if self.config.cfg_debug.fw_log_en == 0:"
+      ],
+      "why": "the handler that just ran - note schedule_reboot, not reboot"
+     },
+     {
+      "kind": "note",
+      "text": "The chip has ANSWERED but not yet RESTARTED. We have just collected the\nanswer, so the restart is now armed and will happen at the start of the next\nexchange.\n\nWhy this matters concretely: remember CHIP_STATUS rides along with every reply.\nIf the chip restarted immediately, the CHIP_STATUS attached to THIS reply would\nalready announce the new mode, whereas a real chip still announces the old one.\n\nAn implementation that gets this wrong passes every test in the suite and is\nstill wrong against the datasheet. It is exactly the class of detail that only\nreading the specification catches - and I got it wrong first time by not\nreading it."
+     }
+    ],
+    "title": "Ask the chip to restart into the bootloader - and watch what does NOT happen"
+   },
+   {
+    "explain": "This is precisely what the host library does next - it asks for CHIP_STATUS.",
+    "n": 5,
+    "segments": [
+     {
+      "kind": "status",
+      "mode": "MAINTENANCE / Start-up",
+      "prefix": "",
+      "value": 5
+     },
+     {
+      "kind": "prose",
+      "text": "   internal mode is now:   START_UP"
+     },
+     {
+      "file": "tvl/targets/model/internal/chip_mode.py",
+      "kind": "source",
+      "line": 18,
+      "lines": [
+       "    def chip_status_flags(self) -> L1ChipStatusFlag:",
+       "        \"\"\"Mode bits of CHIP_STATUS. READY is owned by the SPI FSM.\"\"\"",
+       "        if self is ChipMode.START_UP:",
+       "            return L1ChipStatusFlag.START",
+       "        return L1ChipStatusFlag(0)",
+       "",
+       "",
+       "@unique",
+       "class BootTarget(Enum):",
+       "    \"\"\"The mode a reset asks for.",
+       "",
+       "    Distinct from `ChipMode`: asking for APPLICATION does not guarantee it. With"
+      ],
+      "why": "the mode turns itself into the CHIP_STATUS bits you just saw"
+     },
+     {
+      "kind": "note",
+      "text": "START flipped from 0 to 1.\n\nThat single bit is the ENTIRE agreement between chip and host about which\nfirmware is running. The host library reads this one byte and nothing else: if\nALARM is set, alarm; otherwise if READY and START are both set, the bootloader;\notherwise the application. There is no second signal and no negotiation."
+     }
+    ],
+    "title": "The next exchange: the restart lands"
+   },
+   {
+    "explain": "Byte for byte the same message. Compare this reply against step 2's.",
+    "n": 6,
+    "segments": [
+     {
+      "chip_status": 5,
+      "got": "010400010082fbfa",
+      "kind": "exchange",
+      "sent": "010202002b98"
+     },
+     {
+      "kind": "prose",
+      "text": "   (pattern 'def _riscv_fw_version' not found in tvl/targets/model/tropic01_l2_api_impl.py)\n\n   step 2 said (application firmware) : 00 00 00 02\n   now it says (bootloader)           : 00 01 00 82\n   the host reads that as version     : 2.0.1   (plus a marker bit)"
+     },
+     {
+      "kind": "note",
+      "text": "Two separate things changed.\n\nFirst, the version is 2.0.1 rather than 2.0.0 - the bootloader's OWN version, a\ngenuinely different piece of software with its own release history.\n\nSecond, the top bit of the last byte is set: 0x82 rather than 0x02. (0x82 is\n0x02 plus 0x80. Since a byte's eight bits carry the values 1, 2, 4 ... 128, the\n0x80 bit is the highest of them - hence \"most significant bit\". Setting it flags\nthe answer without disturbing the version number underneath, which is why the\nhost strips it off with & 0x7F before reading the version.)\n\nThis is the most important observation in the tour. The reason the answer\ndiffers is not an if-statement bolted onto a function. It is that A DIFFERENT\nPROGRAM IS ANSWERING. Hold onto that picture - everything else follows from it.\n\nOne honest caveat, worth being able to say aloud: that top-bit convention\nappears in NO published document, neither datasheet nor API specification. It is\nvisible only in the host library's test code."
+     }
+    ],
+    "title": "Send the identical question from step 2 - a different firmware answers"
+   },
+   {
+    "explain": "SPECT is a second, specialised processor inside the chip that performs\nelliptic-curve mathematics - the heavy lifting behind digital signatures. In\nbootloader mode it has no firmware loaded at all, so there is genuinely no\nversion for it to report.",
+    "n": 7,
+    "segments": [
+     {
+      "chip_status": 5,
+      "got": "010400000080e3fa",
+      "kind": "exchange",
+      "sent": "010204002b8c"
+     },
+     {
+      "kind": "note",
+      "text": "The API specification says, word for word: \"The SPECT bootloader\nis a part of RISC-V bootloader. Returns dummy value.\"\n\nSo this is a fixed placeholder rather than a computed version: the number\n0x80000000, which little-endian renders as 00 00 00 80. The host library\ncompares against exactly those four bytes, and that single comparison is how its\ntest decides which mode the chip is in."
+     }
+    ],
+    "title": "The coprocessor's version is a placeholder here"
+   },
+   {
+    "explain": "The same object 0xB0 that was refused back in step 3. Which bank you want\ntravels in the second field, the one documented as \"ignored\" for version\nqueries. Reusing a spare field like that is normal in tightly-packed protocols.",
+    "n": 8,
+    "segments": [
+     {
+      "kind": "prose",
+      "text": "   main processor, bank 1  (id 0x01)"
+     },
+     {
+      "chip_status": 5,
+      "got": "013401000001000000020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f6fe",
+      "kind": "exchange",
+      "sent": "0102b00124b4"
+     },
+     {
+      "kind": "prose",
+      "text": "      -> 52 bytes: a header, so this bank holds firmware\n\n   main processor, bank 2  (id 0x02)"
+     },
+     {
+      "chip_status": 5,
+      "got": "01000386",
+      "kind": "exchange",
+      "sent": "0102b0022eb4"
+     },
+     {
+      "kind": "prose",
+      "text": "      -> 0 bytes: this bank is EMPTY\n\n   coprocessor,    bank 1  (id 0x11)"
+     },
+     {
+      "chip_status": 5,
+      "got": "01340200000100000201000000000000000000000000000000000000000000000000000000000000000000000000000000000000000041ca",
+      "kind": "exchange",
+      "sent": "0102b0114734"
+     },
+     {
+      "kind": "prose",
+      "text": "      -> 52 bytes: a header, so this bank holds firmware\n\n   coprocessor,    bank 2  (id 0x12)"
+     },
+     {
+      "chip_status": 5,
+      "got": "01000386",
+      "kind": "exchange",
+      "sent": "0102b0124d34"
+     },
+     {
+      "kind": "prose",
+      "text": "      -> 0 bytes: this bank is EMPTY"
+     },
+     {
+      "kind": "note",
+      "text": "Exactly three reply lengths are legal: 52 bytes (this bootloader's header\nlayout), 20 (an older chip revision's), and 0 (an empty bank). The host library\nrejects anything else outright, so this is not a place to improvise.\n\nOne genuine open question, worth raising with them: the host library accepts 0,\nbut the written API specification says a Get_Info reply is 1 to 128 bytes -\nminimum one. Those two contradict each other. This model follows the library."
+     }
+    ],
+    "title": "Firmware bank headers - readable now the bootloader is in charge"
+   },
+   {
+    "explain": "This is the heart of the whole piece of work.\n\nThe bootloader is not the application firmware with features switched off. It is\na DIFFERENT and SMALLER set of questions it can understand. It has never heard\nof the question \"let us open a secure conversation\" (ID 0x02).",
+    "n": 9,
+    "segments": [
+     {
+      "file": "tvl/targets/model/tropic01_l2_api_impl.py",
+      "kind": "source",
+      "line": 52,
+      "lines": [
+       "L2_REQUEST_MODES: Dict[int, FrozenSet[ChipMode]] = {",
+       "    L2Enum.GET_INFO: _BOTH_MODES,  # identification must work before the FW is trusted",
+       "    L2Enum.RESEND: _BOTH_MODES,  # pure L1/L2 transport",
+       "    L2Enum.GET_LOG: _BOTH_MODES,  # CFG_DEBUG is a bootloader CO register",
+       "    L2Enum.STARTUP: _BOTH_MODES,  # or maintenance mode would be a one-way trip",
+       "    L2Enum.HANDSHAKE: _APPLICATION_ONLY,  # the bootloader has no secure channel",
+       "    L2Enum.ENCRYPTED_CMD: _APPLICATION_ONLY,  # no session, nothing to decrypt",
+       "    L2Enum.ENCRYPTED_SESSION_ABT: _APPLICATION_ONLY,  # no session to abort",
+       "    L2Enum.SLEEP: _APPLICATION_ONLY,  # CFG_SLEEP_MODE is application-CO only",
+       "}",
+       "\"\"\"Which modes serve which L2 request. Enforced once, in BaseModel, before dispatch.\"\"\"",
+       "",
+       "_OID = TsL2GetInfoRequest.ObjectIdEnum",
+       "_Provider = Callable[[Any, TsL2GetInfoRequest], Tuple[bytes, int]]",
+       "",
+       "_STARTUP_ID_BOOT_TARGETS: Dict[int, BootTarget] = {",
+       "    TsL2StartupRequest.StartupIdEnum.REBOOT: BootTarget.APPLICATION,",
+       "    TsL2StartupRequest.StartupIdEnum.MAINTENANCE_REBOOT: BootTarget.START_UP,",
+       "}",
+       "",
+       "",
+       "class L2APIImplementation(L2API):",
+       "    L2_REQUEST_MODES = L2_REQUEST_MODES",
+       "",
+       "    def ts_l2_get_info(self, request: TsL2GetInfoRequest) -> TsL2GetInfoResponse:",
+       "        object_id = request.object_id.value",
+       "        try:",
+       "            object_id = TsL2GetInfoRequest.ObjectIdEnum(object_id)"
+      ],
+      "why": "the entire gating policy - eight lines of table, one comment each"
+     },
+     {
+      "file": "tvl/targets/model/base_model.py",
+      "kind": "source",
+      "line": 405,
+      "lines": [
+       "    def _is_request_available(self, request: L2Request) -> bool:",
+       "        \"\"\"Whether the current mode's L2 API includes this request.",
+       "",
+       "        Args:",
+       "            request (L2Request): the parsed request",
+       "",
+       "        Returns:",
+       "            True if the request may be processed",
+       "        \"\"\"",
+       "        modes = self.L2_REQUEST_MODES.get(request.id.value)",
+       "        return modes is None or self._chip_mode in modes",
+       "",
+       "    @base(\"l2_api\")",
+       "    def process_l2_request("
+      ],
+      "why": "and this is the only place it is enforced, for every request"
+     },
+     {
+      "chip_status": 5,
+      "got": "7e000584",
+      "kind": "exchange",
+      "sent": "0221000000000000000000000000000000000000000000000000000000000000000000feee"
+     },
+     {
+      "kind": "note",
+      "text": "\"Unknown request\" - and the datasheet specifies exactly this:\n\"Upon receiving Handshake_Req, respond with STATUS=UNKNOWN_REQ\".\n\nWhy not \"temporarily disabled\"? Because that would mean the feature exists and\nhas been switched off, which is what a different question returns when logging\nis disabled by configuration. Nothing is switched off here. The question simply\nis not in this program's vocabulary, and \"I do not know that word\" is the honest\nanswer.\n\nAnd because this handshake is the ONLY way to open a secure conversation, and\n\"send an encrypted command\" is blocked too, the ENTIRE encrypted command layer\nbecomes unreachable without a single line of code at that layer. That is why\nthere is no second list of blocked commands: a second list could drift out of\nagreement with the first, and then the two would disagree silently."
+     }
+    ],
+    "title": "The gate: try to open a secure conversation while in bootloader mode"
+   },
+   {
+    "explain": "The same two-beat dance: reply first, restart on the following exchange.",
+    "n": 10,
+    "segments": [
+     {
+      "chip_status": 5,
+      "got": "01000386",
+      "kind": "exchange",
+      "sent": "b30101f98f"
+     },
+     {
+      "kind": "status",
+      "mode": "APPLICATION",
+      "prefix": "",
+      "value": 1
+     },
+     {
+      "chip_status": 1,
+      "got": "010400000002eff9",
+      "kind": "exchange",
+      "sent": "010202002b98"
+     },
+     {
+      "kind": "note",
+      "text": "Back to the application firmware's version."
+     }
+    ],
+    "title": "Restart back into the application firmware - the gate lifts"
+   },
+   {
+    "explain": "Everything so far travelled in plain sight - anyone with a probe on those wires\ncould read it. That is fine for \"which version are you\". It is not fine for\n\"sign this transaction\".\n\nSo the real work happens inside an encrypted conversation, and the HANDSHAKE is\nthe only door into it. A handshake is the opening ritual in which two parties\nprove who they are and agree on a shared secret key without ever transmitting\nthat key.\n\nThe recipe used here is a published, peer-reviewed one called Noise KK1:\n  - X25519 to agree the shared secret,\n  - AES-GCM to encrypt each message and make tampering detectable,\n  - SHA-256 to boil the conversation so far down to a fixed-size fingerprint.\n\n\"KK\" means both parties already know each other's public key beforehand - which\nis our situation exactly: the chip's was set at the factory, ours sits in\npairing slot 0. Each side ALSO generates a single-use throwaway key pair for\nthis conversation alone. That is what makes recorded traffic undecipherable\nlater even if the long-term keys were somehow stolen afterwards.",
+    "n": 11,
+    "segments": [
+     {
+      "file": "tvl/crypto/encrypted_session.py",
+      "kind": "source",
+      "line": 12,
+      "lines": [
+       "PROTOCOL_NAME = b\"Noise_KK1_25519_AESGCM_SHA256\\x00\\x00\\x00\"",
+       "",
+       "X25519_KEY_LEN = 32"
+      ],
+      "why": "the recipe, named in the source - not something I inferred"
+     },
+     {
+      "file": "tvl/crypto/encrypted_session.py",
+      "kind": "source",
+      "line": 67,
+      "lines": [
+       "    def execute_handshake(",
+       "        self,",
+       "        sh_key_index: int,  # static host pairing key index",
+       "        sh_public_key: bytes,  # static host pairing public key",
+       "        st_public_key: bytes,  # static Tropic public key",
+       "        eh_public_key: bytes,  # ephemeral host public key",
+       "        et_public_key: bytes,  # ephemeral Tropic public key",
+       "        secret_eh_et: bytes,  # ephemeral-host/ephemeral-Tropic shared secret",
+       "        secret_sh_et: bytes,  # static-host/ephemeral-Tropic shared secret",
+       "        secret_eh_st: bytes,  # ephemeral-host/static-Tropic shared secret",
+       "    ) -> bytes:",
+       "        h = sha256(PROTOCOL_NAME).digest()",
+       "        h = sha256(h + sh_public_key).digest()",
+       "        h = sha256(h + st_public_key).digest()",
+       "        h = sha256(h + eh_public_key).digest()",
+       "        h = sha256(h + bytes([sh_key_index])).digest()",
+       "        self.handshake_hash = sha256(h + et_public_key).digest()",
+       "        ck, _ = hkdf(PROTOCOL_NAME, secret_eh_et)",
+       "        ck, _ = hkdf(ck, secret_sh_et)",
+       "        ck, k_auth = hkdf(ck, secret_eh_st)",
+       "        self.k_cmd, self.k_resp = hkdf(ck, b\"\")",
+       "        self.nonce_cmd = 0",
+       "        self.nonce_resp = 0",
+       "        return AESGCM(k_auth).encrypt(bytes(IV_LEN), b\"\", self.handshake_hash)",
+       "",
+       "    def is_session_valid(self) -> bool:"
+      ],
+      "why": "the handshake itself: the fingerprint, then three key agreements"
+     },
+     {
+      "kind": "prose",
+      "text": "   our throwaway public key  : 55 6a 40 17 12 da 87 d7 37 e0 10 16 88 53 4b fd  ...(+16 more)\n   chip's verdict            : 0x01 (\"REQ_OK\")\n   chip's throwaway pub key  : 35 4d d8 1c 81 87 57 19 b3 11 5e 1d 8b 53 ef f4  ...(+16 more)\n   proof-of-identity tag     : 19 24 e9 10 2d f6 5d 9b c4 18 5e f2 d5 7e 36 77\n\n   secure conversation open?   chip says True, host says True"
+     },
+     {
+      "kind": "note",
+      "text": "What happened, in order:\n\n  1. Both sides build a running fingerprint of everything said so far: the\n     recipe's name, both long-term public keys, both throwaway public keys, and\n     - importantly - WHICH PAIRING SLOT is in use. Baking the slot number in\n     means a recorded handshake cannot be replayed against a different slot.\n\n  2. Three key agreements are performed and stirred together. Each is a\n     Diffie-Hellman exchange: a trick where two parties each combine their own\n     private key with the other's public key and, remarkably, both arrive at the\n     same secret number - while an eavesdropper who saw only the public halves\n     cannot compute it. Doing it three times, mixing throwaway with long-term\n     keys, is what binds the conversation to BOTH identities at once.\n\n  3. Out of that stirring come two separate encryption keys, one per direction\n     of travel, plus a third used only for the next step.\n\n  4. The chip returns the \"proof-of-identity tag\": that third key applied to the\n     conversation fingerprint. Our side recomputes it independently and\n     compares. Only something holding the chip's genuine private key could have\n     produced it, so a match proves we are talking to the real chip and not to\n     an impostor sitting in the middle of the wire."
+     }
+    ],
+    "title": "Opening a secure conversation, for real"
+   },
+   {
+    "explain": "Commands never cross the wire in the open. Each is encrypted, wrapped inside an\nordinary \"here is an encrypted command\" message, and if too long, chopped into\n128-byte pieces and reassembled at the far end.\n\n\"Ping\" simply echoes back whatever you send it, which makes it the cleanest\nthing to watch happen.",
+    "n": 12,
+    "segments": [
+     {
+      "kind": "prose",
+      "text": "   what we want to send : Ping(b'hello tropic')\n\n   what actually crossed the wire:\n   04 1f 0d 00 1b 97 7e 94 e3 17 b7 26 0c 0f 2c 78 73 1e 75 06 36 ad a2 b2 28 01 b9 82  ...(+7 more)\n\n   chip's answer        : 0xc3 (\"OK\")\n   echoed back          : b'hello tropic'\n\n   message counters: outgoing=1, incoming=1"
+     },
+     {
+      "kind": "note",
+      "text": "Search those wire bytes for \"hello tropic\" - it is not there. Neither is\nthe reply, which came back encrypted too and was unwrapped on our side.\n\nNotice also that there are now TWO verdicts at two different levels: the outer\nmessage said \"received intact\", and the inner command said \"succeeded\". They are\nindependent and can disagree - a perfectly delivered message can carry a command\nthat is refused, which is exactly what happens two steps from now."
+     }
+    ],
+    "title": "Sending a command inside the secure conversation"
+   },
+   {
+    "explain": "Every command uses up exactly one counter value in each direction.",
+    "n": 13,
+    "segments": [
+     {
+      "kind": "prose",
+      "text": "   verdict: 0xc3   random bytes: ad 3e 15 66 72 a3 7c 9a 1f f9 3a 32 3c ea 6a 0f\n   message counters: outgoing=2, incoming=2"
+     },
+     {
+      "kind": "note",
+      "text": "These counters are called NONCES - \"numbers used once\". This style of\nencryption requires that no counter value is ever reused with the same key.\nReuse does not merely weaken it; it can hand an attacker the means to forge\nmessages outright.\n\nSo both sides track them in lockstep. If they ever disagree the chip abandons\nthe conversation immediately rather than guessing, because a mismatch means\nsomebody has dropped, replayed or injected a message. And when the counter\nreaches its maximum - about four billion - the conversation is torn down rather\nthan allowed to wrap back to zero. Refusing to continue is the only safe move."
+     }
+    ],
+    "title": "A second command, to watch the counters move"
+   },
+   {
+    "explain": "Every command the chip accepts begins with a permission check, and the answer\ndepends on WHICH PAIRING SLOT was used to open the conversation.\n\nFor each command the chip stores a small row of switches, one per slot. The\ncheck is simply: \"is the switch for the slot this conversation used turned on?\"\n\nWe opened ours with slot 0, so switching off slot 0's permission for Ping revokes\nit for us - and for nobody else.",
+    "n": 14,
+    "segments": [
+     {
+      "file": "tvl/targets/model/base_model.py",
+      "kind": "source",
+      "line": 539,
+      "lines": [
+       "    def check_access_privileges(self, name: str, value: int) -> None:",
+       "        \"\"\"Check the current pairing key access privileges",
+       "",
+       "        Args:",
+       "            name (str): name of the configuration field",
+       "            value (int): value of the configuration field",
+       "",
+       "        Raises:",
+       "            FailError: TROPIC01 is not paired yet",
+       "            UnauthorizedError: the current pairing key does not have sufficient",
+       "                privileges to access the feature guarded by the register.",
+       "        \"\"\"",
+       "        name = name.upper()",
+       "        self.uap_logger.info(\"Checking access privileges for %s.\", name)",
+       "        if not self.activate_encryption:",
+       "            self.uap_logger.debug(\"Encryption deactivated, bypassing check.\")",
+       "            return",
+       "        self.uap_logger.debug(\"Pairing key slot #%d\", self.pairing_key_slot)",
+       "        self.uap_logger.debug(\"Configuration field: %s\", bin(value))",
+       "        if not 0 <= self.pairing_key_slot < S_HI_PUB_NB_SLOTS:",
+       "            raise RuntimeError(\"Chip not paired yet.\")",
+       "        if not value & 2**self.pairing_key_slot:",
+       "            raise L3ProcessingErrorUnauthorized(",
+       "                f\"Pairing key slot #{self.pairing_key_slot} \"",
+       "                f\"does not have access to {name}.\"",
+       "            )",
+       "        self.uap_logger.debug(",
+       "            \"Pairing key slot #%d has access to %s.\", self.pairing_key_slot, name",
+       "        )",
+       ""
+      ],
+      "why": "the permission check every single command starts with"
+     },
+     {
+      "kind": "prose",
+      "text": "   chip's answer: 0x01 (\"UNAUTHORIZED\")"
+     },
+     {
+      "kind": "note",
+      "text": "Refused as unauthorised. Now notice what did NOT happen: the secure\nconversation is still open, and the command arrived and decrypted perfectly.\n\nThat is the difference between AUTHENTICATION - proving who you are, which the\nhandshake did - and AUTHORISATION, which is what you are permitted to do. Had we\nopened the conversation using slot 1, slot 1's switch is still on and this\nidentical command would have worked.\n\nTwo further things this exposes:\n\n  - Those switches live in configuration memory whose bits can only ever be\n    turned OFF, never back on. That is what makes part of the chip's\n    configuration \"irreversible\": the factory sets a ceiling which the field can\n    lower but never raise. Deliberate, and unusual if you are used to ordinary\n    software where any setting can be undone.\n\n  - I had to clear a cached copy by hand for the change to take effect, because\n    the chip reads its configuration once at power-on and remembers it. On a\n    real chip you would have to restart it."
+     }
+    ],
+    "title": "Permissions: the same command, now refused"
+   },
+   {
+    "explain": "The persistence policy from the design note, demonstrated rather than asserted.",
+    "n": 15,
+    "segments": [
+     {
+      "kind": "prose",
+      "text": "   secure conversation before restart: True"
+     },
+     {
+      "chip_status": 1,
+      "got": "01000386",
+      "kind": "exchange",
+      "sent": "b30101f98f"
+     },
+     {
+      "kind": "status",
+      "mode": "APPLICATION",
+      "prefix": "",
+      "value": 1
+     },
+     {
+      "kind": "prose",
+      "text": "   secure conversation after restart : False"
+     },
+     {
+      "file": "tvl/targets/model/base_model.py",
+      "kind": "source",
+      "line": 465,
+      "lines": [
+       "    def _reset_volatile_state(self) -> None:",
+       "        \"\"\"Clear what a reset clears; I-Memory and R-Memory are untouched.\"\"\"",
+       "        self.invalidate_session()",
+       "        self.command_buffer.reset()",
+       "        self.spi_fsm.reset()",
+       "        self._config = None",
+       "",
+       "    def _load_mutable_fw(self) -> bool:",
+       "        \"\"\"Whether the bootloader finds a RISC-V FW image to execute.\"\"\"",
+       "        return self.fw_banks.has_riscv_fw()",
+       "",
+       "    def _maintenance_allowed(self) -> bool:",
+       "        \"\"\"Whether CFG_START_UP.MAINTENANCE_ENA permits a maintenance restart.\"\"\"",
+       "        return bool(self.config.cfg_start_up.maintenance_ena)",
+       "",
+       "    def _boot(self, target: BootTarget) -> ChipMode:"
+      ],
+      "why": "exactly what a restart clears - and the comment saying why"
+     },
+     {
+      "file": "tvl/targets/model/base_model.py",
+      "kind": "source",
+      "line": 480,
+      "lines": [
+       "    def _boot(self, target: BootTarget) -> ChipMode:",
+       "        \"\"\"Reset and boot towards `target`; every entry into a mode goes through here.",
+       "",
+       "        Args:",
+       "            target (BootTarget): the mode this reset asks for",
+       "",
+       "        Returns:",
+       "            the mode the chip ended up in",
+       "        \"\"\"",
+       "        self._reset_volatile_state()",
+       "        # Datasheet 6.1: configuration is read and applied at start-up. The",
+       "        # reset dropped the cache, so this latches i_config & r_config as of now.",
+       "        _ = self.config",
+       "",
+       "        if target is BootTarget.START_UP:",
+       "            self._chip_mode = ChipMode.START_UP",
+       "        elif self._load_mutable_fw():",
+       "            self._chip_mode = ChipMode.APPLICATION",
+       "        else:",
+       "            # No loadable FW: stay in the bootloader (libtropic: LT_REBOOT_UNSUCCESSFUL).",
+       "            self._chip_mode = ChipMode.START_UP",
+       "        self.logger.info(\"Booted in %s mode.\", self._chip_mode.name)",
+       "        return self._chip_mode",
+       "",
+       "    def reboot(self, target: BootTarget) -> ChipMode:",
+       "        \"\"\"Reset the chip now and boot towards `target`.",
+       "",
+       "        Args:",
+       "            target (BootTarget): the mode this reset asks for",
+       "",
+       "        Returns:",
+       "            the mode the chip ended up in",
+       "        \"\"\"",
+       "        return self._boot(target)"
+      ],
+      "why": "THE state machine. Thirty lines. This is the whole feature."
+     },
+     {
+      "kind": "note",
+      "text": "Both kinds of restart wipe exactly this much and no more: the secure\nconversation, the half-assembled command buffer, the wire-level state, and the\ncached configuration.\n\nNeither touches the configuration itself, the stored keys, saved user data, the\ncounters or the firmware banks. Those live in memory that survives loss of\npower, and a restart does not erase memory.\n\nThe ONLY difference between the two restarts is whether the application firmware\ngets loaded. The mode you end up in is a CONSEQUENCE of that, not a separate\ndecision - which is exactly why the code has one restart routine rather than\ntwo."
+     },
+     {
+      "kind": "prose",
+      "text": "============================================================================\n What you just watched\n============================================================================\n\n  1. A \"mode\" does not switch features on and off - it decides WHICH PROGRAM\n     answers. Two firmwares, not one firmware full of if-statements.\n\n  2. One bit, START, carries that entire agreement. It rides on the first byte\n     of every single exchange.\n\n  3. The chip replies to a restart request, THEN restarts once you collect the\n     reply. Two beats, and the datasheet is explicit about it.\n\n  4. The identical question returns different bytes in the two modes, because a\n     different program is answering.\n\n  5. Refusing the handshake closes the whole encrypted layer by itself, with no\n     code at that layer.\n\n  6. The secure conversation follows a published recipe. The chip proves itself\n     with a tag over a fingerprint that includes the pairing slot number.\n\n  7. Every command checks the permission switch for the slot you paired with.\n     Which slot you used IS your permission level.\n\n  Now read two things, in this order. Together they are the whole feature:\n     tvl/targets/model/tropic01_l2_api_impl.py -> L2_REQUEST_MODES  (an 8-row list)\n     tvl/targets/model/base_model.py           -> _boot()           (30 lines)\n\n  Then break it deliberately and re-run. This teaches far more than reading:\n     - Delete the HANDSHAKE line from L2_REQUEST_MODES  -> step 9 stops refusing\n     - Set busy_iter=[True] at the top of this file     -> READY starts flickering\n     - Empty the dict in fw_bank.py:_default_banks()    -> step 8 changes\n     - Change SLOT = 0 to SLOT = 1 at the top           -> step 14 stops refusing"
+     }
+    ],
+    "title": "Restarting ends the conversation - which is where we came in"
+   }
+  ]
+ },
  "walkthroughs": {
   "scenarios": [
    {
