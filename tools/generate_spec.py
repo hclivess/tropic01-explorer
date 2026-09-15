@@ -1401,10 +1401,19 @@ def _example_title(source: str) -> Optional[str]:
         for line in source.splitlines()
         if line.startswith("#") and set(line.strip()) != {"#"}
     ]
+    # The banner is a block of `#` lines between two `####` rules; join the whole
+    # block, or a one-line title cuts a sentence in half ("...and back, and").
+    block: List[str] = []
     for line in lines:
-        if line and not line.startswith("!") and len(line) > 20:
-            return line
-    return None
+        if line.startswith("!"):
+            continue
+        if line and len(line) > 20 and not block:
+            block.append(line)
+        elif block and line:
+            block.append(line)
+        elif block:
+            break
+    return " ".join(block) or None
 
 
 def constants() -> Dict[str, Any]:
