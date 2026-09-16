@@ -245,17 +245,17 @@ async function run() {
 
   // the repository's own examples must all reach the page
   atLeast("examples", (spec.examples || []).length, 1);
-  check("example panels", n("#examples > .panel"), spec.examples.length);
-  check("example sources shown", n("#examples .src"), spec.examples.length);
+  check("example panels", n("#examples-list > .panel"), spec.examples.length);
+  check("example sources shown", n("#examples-list .src"), spec.examples.length);
   const totalCalls = spec.examples.reduce((a, x) => a + x.calls.length, 0);
-  check("example exchanges shown", n("#examples .call"), totalCalls);
+  check("example exchanges shown", n("#examples-list .call"), totalCalls);
   const l3Calls = spec.examples.reduce(
     (a, x) => a + x.calls.filter((c) => c.kind === "L3").length, 0);
-  check("L3 exchanges marked", n("#examples .call.l3"), l3Calls);
+  check("L3 exchanges marked", n("#examples-list .call.l3"), l3Calls);
   const streams = spec.examples.reduce(
     (a, x) => a + (x.stdout ? 1 : 0) + (x.logs ? 1 : 0), 0);
-  check("captured output streams shown", n("#examples .out"), streams);
-  check("log streams shown", n("#examples .out.logstream"),
+  check("captured output streams shown", n("#examples-list .out"), streams);
+  check("log streams shown", n("#examples-list .out.logstream"),
     spec.examples.filter((x) => x.logs).length);
   // every example calls setup_logging(), so every one must have a log
   check("every example captured its log",
@@ -265,7 +265,7 @@ async function run() {
   check("no example raised", spec.examples.filter((x) => x.error).length, 0);
   // masking must be visible wherever the capture says bytes moved
   const anyVolatile = spec.examples.some((x) => x.any_volatile);
-  check("session-dependent bytes are marked", n("#examples .vol") > 0, anyVolatile);
+  check("session-dependent bytes are marked", n("#examples-list .vol") > 0, anyVolatile);
 
   // constants, read off tvl/constants.py
   const entries = spec.constants.enums.reduce((a, e) => a + e.members.length, 0)

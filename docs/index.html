@@ -457,7 +457,7 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
     printed, and the bytes underneath — not a description of what they do.
   </p>
   <p class="note" id="ex-note"></p>
-  <div id="examples"></div>
+  <div id="examples-list"></div>
 </section>
 
 <section id="tab-constants" hidden>
@@ -1615,7 +1615,7 @@ PATH=$PWD/.venv/bin:$PATH PYTHONPATH=/path/to/ts-tvl python3 tools/serve.py</div
       + "session-dependent bytes; those are shown as " + "\u00b7"
       + " and are exactly the positions that moved across repeated runs.";
 
-  const exBox = $("examples");
+  const exBox = $("examples-list");
   (S.examples || []).forEach((x) => {
     const panel = el("div", { className: "panel" });
     panel.append(el("div", {}, [
